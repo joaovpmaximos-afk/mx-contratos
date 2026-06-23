@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MX Contratos — MAXIMOS Soluções Empresariais</title>
+<style>
+  :root{
+    --azul:#0f2a4a; --azul2:#16406e; --acento:#c8962f; --acento2:#e0b35a;
+    --tinta:#1c2530; --cinza:#5a6573; --linha:#dfe4ea; --fundo:#eef1f5;
+    --painel:#ffffff; --ok:#1f9d55; --erro:#c0392b; --aviso:#b8860b;
+    --sombra:0 1px 3px rgba(15,42,74,.10),0 6px 18px rgba(15,42,74,.06);
+    --raio:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,Arial,sans-serif;color:var(--tinta);background:var(--fundo);font-size:15px;line-height:1.45}
+  a{color:var(--azul2)}
+  /* Cabeçalho */
+  header.topo{background:linear-gradient(135deg,var(--azul),var(--azul2));color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;box-shadow:var(--sombra);position:sticky;top:0;z-index:50}
+  .marca{display:flex;align-items:center;gap:12px}
+  .logo{width:42px;height:42px;border-radius:9px;background:var(--acento);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--azul);font-size:20px;letter-spacing:-1px}
+  .marca h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.3px}
+  .marca small{display:block;font-size:11px;color:#bcd0e8;font-weight:400;letter-spacing:1.5px;text-transform:uppercase}
+  header.topo .acoes{margin-left:auto;display:flex;gap:8px;align-items:center}
+  /* Navegação por abas */
+  nav.abas{background:var(--painel);border-bottom:1px solid var(--linha);display:flex;flex-wrap:wrap;gap:2px;padding:0 14px;position:sticky;top:70px;z-index:40;box-shadow:0 2px 6px rgba(0,0,0,.03)}
+  nav.abas button{border:none;background:transparent;padding:12px 14px;font-size:13.5px;color:var(--cinza);cursor:pointer;border-bottom:3px solid transparent;font-weight:600;white-space:nowrap}
+  nav.abas button:hover{color:var(--azul2)}
+  nav.abas button.ativa{color:var(--azul);border-bottom-color:var(--acento)}
+  nav.abas .num{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--fundo);color:var(--cinza);font-size:11px;align-items:center;justify-content:center;margin-right:6px;font-weight:700}
+  nav.abas button.ativa .num{background:var(--acento);color:var(--azul)}
+  /* Layout */
+  main{max-width:1080px;margin:22px auto;padding:0 18px 80px}
+  .secao{display:none;animation:fade .2s ease}
+  .secao.ativa{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .card{background:var(--painel);border:1px solid var(--linha);border-radius:var(--raio);box-shadow:var(--sombra);padding:22px;margin-bottom:18px}
+  .card h2{margin:0 0 4px;font-size:17px;color:var(--azul)}
+  .card h2 .tag{font-size:11px;background:var(--fundo);color:var(--cinza);padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:600;vertical-align:middle}
+  .card .desc{color:var(--cinza);font-size:13px;margin:0 0 16px}
+  /* Formulários */
+  .grade{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+  .campo{display:flex;flex-direction:column;gap:4px}
+  .campo.c2{grid-column:span 2}.campo.c3{grid-column:span 3}.campo.c4{grid-column:span 4}
+  .campo.c5{grid-column:span 5}.campo.c6{grid-column:span 6}.campo.c8{grid-column:span 8}
+  .campo.c9{grid-column:span 9}.campo.c12{grid-column:span 12}
+  label{font-size:12px;font-weight:600;color:var(--cinza)}
+  input,select,textarea{font-family:inherit;font-size:14px;padding:9px 10px;border:1px solid var(--linha);border-radius:7px;background:#fff;color:var(--tinta);width:100%}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--azul2);box-shadow:0 0 0 3px rgba(22,64,110,.12)}
+  textarea{resize:vertical;min-height:80px;line-height:1.5}
+  input[readonly]{background:#f4f6f9;color:var(--cinza)}
+  @media(max-width:760px){.grade .campo{grid-column:span 12 !important}nav.abas{top:64px}}
+  /* Botões */
+  .btn{border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+  .btn.primario{background:var(--acento);color:var(--azul)}
+  .btn.primario:hover{background:var(--acento2)}
+  .btn.escuro{background:rgba(255,255,255,.14);color:#fff}
+  .btn.escuro:hover{background:rgba(255,255,255,.24)}
+  .btn.contorno{background:#fff;color:var(--azul2);border:1px solid var(--linha)}
+  .btn.contorno:hover{border-color:var(--azul2)}
+  .btn.perigo{background:#fdecea;color:var(--erro)}
+  .btn.perigo:hover{background:#f9d9d6}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.grande{padding:13px 22px;font-size:15px}
+  .barra-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  /* Sócios / repetição */
+  .socio{border:1px solid var(--linha);border-radius:9px;padding:16px;margin-bottom:14px;position:relative;background:#fbfcfe}
+  .socio .cab{display:flex;align-items:center;margin-bottom:10px}
+  .socio .cab strong{color:var(--azul);font-size:14px}
+  .socio .remover{margin-left:auto}
+  /* Tabela quotas */
+  table.quotas{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}
+  table.quotas th,table.quotas td{padding:9px 10px;border-bottom:1px solid var(--linha);text-align:left}
+  table.quotas th{color:var(--cinza);font-size:11.5px;text-transform:uppercase;letter-spacing:.5px}
+  table.quotas td input{padding:6px 8px}
+  table.quotas tfoot td{font-weight:700;color:var(--azul);border-top:2px solid var(--linha)}
+  .pct-ok{color:var(--ok);font-weight:700}.pct-erro{color:var(--erro);font-weight:700}
+  /* Alterações */
+  .alt-item{border:1px solid var(--linha);border-radius:8px;margin-bottom:8px;overflow:hidden}
+  .alt-cab{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;user-select:none}
+  .alt-cab:hover{background:#f7f9fc}
+  .alt-cab input{width:auto;margin:0}
+  .alt-cab label{font-size:14px;color:var(--tinta);font-weight:600;cursor:pointer}
+  .alt-campos{padding:0 14px 14px;border-top:1px dashed var(--linha);display:none}
+  .alt-campos.aberto{display:block;padding-top:14px}
+  /* Avisos / inconsistências */
+  .avisos{margin:0 0 16px;padding:0;list-style:none}
+  .avisos li{padding:9px 12px;border-radius:7px;font-size:13.5px;margin-bottom:6px;display:flex;gap:8px;align-items:flex-start}
+  .avisos li.e{background:#fdecea;color:var(--erro)}
+  .avisos li.w{background:#fef6e0;color:var(--aviso)}
+  .avisos li.ok{background:#e7f6ec;color:var(--ok)}
+  /* Preview do contrato */
+  #preview{background:#fff;border:1px solid var(--linha);border-radius:8px;padding:48px 56px;min-height:300px;font-family:"Times New Roman",Georgia,serif;font-size:15px;line-height:1.7;color:#111;text-align:justify}
+  #preview h3.titulo{text-align:center;font-size:16px;text-transform:uppercase;margin:0 0 22px;letter-spacing:.5px}
+  #preview p{margin:0 0 12px}
+  #preview .assinaturas{margin-top:48px}
+  #preview .assina{margin-top:40px;text-align:center}
+  #preview .assina .linha{border-top:1px solid #000;width:320px;margin:0 auto 4px}
+  @media(max-width:760px){#preview{padding:24px 18px}}
+  /* Histórico */
+  .hist-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--linha);border-radius:8px;margin-bottom:8px;background:#fbfcfe}
+  .hist-item .info{flex:1}
+  .hist-item .info b{color:var(--azul)}
+  .hist-item .info small{color:var(--cinza);display:block;font-size:12px}
+  .badge{font-size:11px;padding:2px 9px;border-radius:20px;background:var(--fundo);color:var(--cinza);font-weight:700}
+  /* Config / IA */
+  .aviso-seguranca{background:#fef6e0;border:1px solid #f0d999;color:#7a5b00;border-radius:8px;padding:12px 14px;font-size:13px;margin-bottom:16px}
+  .ia-status{margin-top:12px;font-size:13.5px;min-height:20px}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(22,64,110,.25);border-top-color:var(--azul2);border-radius:50%;animation:gira .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  @keyframes gira{to{transform:rotate(360deg)}}
+  .dica{font-size:12px;color:var(--cinza);margin-top:4px}
+  .pill{display:inline-block;background:var(--fundo);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--cinza);margin:2px}
+  .modelo-item{border:1px solid var(--linha);border-radius:8px;padding:14px;margin-bottom:10px;background:#fbfcfe}
+  .modelo-item .cab{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .modelo-item .cab b{color:var(--azul)}
+  .vars-detectadas{margin-top:8px;font-size:12px;color:var(--cinza)}
+  /* Rodapé */
+  footer{text-align:center;color:var(--cinza);font-size:12px;padding:20px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--azul);color:#fff;padding:12px 20px;border-radius:8px;box-shadow:var(--sombra);z-index:200;font-size:14px;opacity:0;pointer-events:none;transition:.3s}
+  .toast.show{opacity:1}
+  /* Autoteste */
+  #autoteste{max-width:1080px;margin:22px auto;padding:0 18px}
+  #autoteste pre{background:#0d1117;color:#c9d1d9;padding:18px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.5}
+  /* Impressão */
+  @media print{
+    header.topo,nav.abas,.barra-acoes,.no-print,footer{display:none !important}
+    body{background:#fff}
+    main{margin:0;max-width:none;padding:0}
+    .secao{display:none !important}
+    .card{border:none;box-shadow:none;padding:0;margin:0}
+    .card h2,.card .desc,.avisos{display:none}
+    #preview{border:none;padding:0}
+  }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">
+    <div class="logo">MX</div>
+    <div>
+      <h1>MX Contratos</h1>
+      <small>MAXIMOS Soluções Empresariais</small>
+    </div>
+  </div>
+  <div class="acoes">
+    <button class="btn escuro" onclick="abrirAba('ia')" title="Preencher a partir de um contrato existente">✨ Preencher com IA</button>
+    <button class="btn primario" onclick="abrirAba('gerar')">📄 Gerar contrato</button>
+  </div>
+</header>
+
+<nav class="abas" id="nav-abas"></nav>
+
+<main id="app">
+
+  <!-- 01 MODELOS -->
+  <section class="secao" data-aba="modelos">
+    <div class="card">
+      <h2>Modelos de documentos <span class="tag">Módulo 1</span></h2>
+      <p class="desc">Cadastre modelos ilimitados de contratos e alterações. Use marcadores <code>{{CAMPO}}</code> no texto — o sistema substitui automaticamente na geração. Suporta listas de sócios (<code>{{#each socios}}...{{/each}}</code>) e cláusulas condicionais (<code>{{#if alterou_endereco}}...{{/if}}</code>).</p>
+      <div class="barra-acoes">
+        <button class="btn primario" onclick="novoModelo()">＋ Novo modelo</button>
+        <button class="btn contorno" onclick="document.getElementById('upModelo').click()">⬆ Carregar de arquivo (.txt)</button>
+        <input type="file" id="upModelo" accept=".txt,.text" style="display:none" onchange="carregarModeloArquivo(event)">
+        <button class="btn contorno" onclick="inserirModelosExemplo()">↺ Inserir modelos de exemplo</button>
+      </div>
+    </div>
+    <div id="lista-modelos"></div>
+  </section>
+
+  <!-- 02 EMPRESA -->
+  <section class="secao" data-aba="empresa">
+    <div class="card">
+      <h2>Dados da empresa <span class="tag">Módulo 2</span></h2>
+      <p class="desc">Informações da sociedade. Esses dados alimentam os marcadores <code>{{razao_social}}</code>, <code>{{cnpj}}</code>, etc. CPF/CNPJ/CEP têm máscara automática; ao digitar o CEP, o endereço é buscado sozinho.</p>
+      <div class="barra-acoes" style="margin-bottom:16px">
+        <button class="btn contorno" onclick="exportarDados()">⬇ Exportar dados (backup)</button>
+        <button class="btn contorno" onclick="document.getElementById('imp-dados').click()">⬆ Importar dados</button>
+        <input type="file" id="imp-dados" accept="application/json,.json" style="display:none" onchange="importarDados(event)">
+        <button class="btn perigo" onclick="limparTudo()">🗑 Limpar tudo</button>
+      </div>
+      <div class="grade" id="form-empresa"></div>
+    </div>
+  </section>
+
+  <!-- 03 SÓCIOS -->
+  <section class="secao" data-aba="socios">
+    <div class="card">
+      <h2>Sócios <span class="tag">Módulo 3</span></h2>
+      <p class="desc">Cadastro ilimitado de sócios. No modelo, use <code>{{#each socios}} {{nome}} — {{cpf}} {{/each}}</code>.</p>
+      <div id="lista-socios"></div>
+      <div class="barra-acoes">
+        <button class="btn primario" onclick="adicionarSocio()">＋ Adicionar sócio</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 QUOTAS -->
+  <section class="secao" data-aba="quotas">
+    <div class="card">
+      <h2>Quotas e capital social <span class="tag">Módulo 4</span></h2>
+      <p class="desc">Informe o capital e a quantidade total de quotas. A participação de cada sócio é calculada automaticamente e validada para fechar 100%.</p>
+      <div class="grade">
+        <div class="campo c4"><label>Valor do capital social (R$)</label><input type="text" id="capital_valor" inputmode="decimal" placeholder="10.000,00" oninput="aoEditarCapital()"></div>
+        <div class="campo c4"><label>Quantidade total de quotas</label><input type="text" id="capital_quotas" inputmode="numeric" placeholder="10000" oninput="aoEditarCapital()"></div>
+        <div class="campo c4"><label>Valor de cada quota (R$)</label><input type="text" id="capital_valorquota" readonly></div>
+      </div>
+      <table class="quotas" id="tabela-quotas">
+        <thead><tr><th>Sócio</th><th style="width:160px">Quantidade de quotas</th><th style="width:160px">Valor (R$)</th><th style="width:120px">Participação</th></tr></thead>
+        <tbody></tbody>
+        <tfoot><tr><td>Total</td><td id="q-total-quotas">0</td><td id="q-total-valor">R$ 0,00</td><td id="q-total-pct">0%</td></tr></tfoot>
+      </table>
+      <div id="quotas-aviso" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <!-- 05 ADMINISTRAÇÃO -->
+  <section class="secao" data-aba="administracao">
+    <div class="card">
+      <h2>Administração <span class="tag">Módulo 5</span></h2>
+      <p class="desc">Quem administra a sociedade?</p>
+      <div id="opcoes-admin" class="grade" style="grid-template-columns:1fr"></div>
+      <div id="admin-terceiro" class="grade" style="display:none;margin-top:14px;border-top:1px dashed var(--linha);padding-top:16px">
+        <div class="campo c6"><label>Nome do administrador (terceiro)</label><input id="adm_nome" oninput="salvar()"></div>
+        <div class="campo c3"><label>CPF</label><input id="adm_cpf" oninput="salvar()"></div>
+        <div class="campo c3"><label>RG</label><input id="adm_rg" oninput="salvar()"></div>
+        <div class="campo c8"><label>Endereço</label><input id="adm_endereco" oninput="salvar()"></div>
+        <div class="campo c4"><label>Cargo</label><input id="adm_cargo" value="Administrador" oninput="salvar()"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 ALTERAÇÕES -->
+  <section class="secao" data-aba="alteracoes">
+    <div class="card">
+      <h2>Alterações contratuais <span class="tag">Módulo 6</span></h2>
+      <p class="desc">Marque as alterações desta operação. Cada item revela os campos necessários e ativa um marcador condicional no modelo (ex.: <code>{{#if alterou_endereco}}</code>).</p>
+      <div id="lista-alteracoes"></div>
+    </div>
+  </section>
+
+  <!-- 07 FORO -->
+  <section class="secao" data-aba="foro">
+    <div class="card">
+      <h2>Foro <span class="tag">Módulo 7</span></h2>
+      <p class="desc">Foro de eleição para dirimir questões do contrato.</p>
+      <div class="grade">
+        <div class="campo c6"><label>Comarca</label><input id="foro_comarca" placeholder="Rio Claro" oninput="salvar();sincronizarForo()"></div>
+        <div class="campo c4"><label>Cidade</label><input id="foro_cidade" placeholder="Rio Claro" oninput="salvar()"></div>
+        <div class="campo c2"><label>Estado (UF)</label><input id="foro_uf" placeholder="SP" maxlength="2" oninput="salvar()"></div>
+        <div class="campo c12"><div class="dica">Prévia: <span id="foro-previa">—</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 08 ASSINATURA -->
+  <section class="secao" data-aba="assinatura">
+    <div class="card">
+      <h2>Local, data e assinatura <span class="tag">Módulo 8</span></h2>
+      <p class="desc">A data por extenso e a lista de assinaturas dos sócios são montadas automaticamente.</p>
+      <div class="grade">
+        <div class="campo c6"><label>Cidade</label><input id="ass_cidade" placeholder="Rio Claro" oninput="salvar();montarDataExtenso()"></div>
+        <div class="campo c4"><label>Data</label><input type="date" id="ass_data" oninput="salvar();montarDataExtenso()"></div>
+        <div class="campo c2"><label>UF</label><input id="ass_uf" placeholder="SP" maxlength="2" oninput="salvar()"></div>
+        <div class="campo c12"><div class="dica">Prévia: <span id="ass-previa">—</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09/10 GERAR -->
+  <section class="secao" data-aba="gerar">
+    <div class="card">
+      <h2>Gerar contrato <span class="tag">Módulos 9 e 10</span></h2>
+      <p class="desc">Selecione o modelo, valide e gere. A IA substitui os marcadores, monta as cláusulas das alterações marcadas e ajusta singular/plural conforme o nº de sócios.</p>
+      <div class="grade">
+        <div class="campo c8"><label>Modelo</label><select id="sel-modelo"></select></div>
+        <div class="campo c4" style="justify-content:flex-end"><button class="btn primario grande" style="width:100%" onclick="gerarContrato()">⚙ Gerar contrato</button></div>
+      </div>
+      <ul class="avisos" id="avisos-gerar"></ul>
+    </div>
+    <div class="card no-print" id="card-exportar" style="display:none">
+      <div class="barra-acoes">
+        <button class="btn primario" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+        <button class="btn contorno" onclick="baixarWord()">⬇ Baixar Word (.doc)</button>
+        <button class="btn contorno" onclick="copiarTexto()">📋 Copiar texto</button>
+        <button class="btn contorno" onclick="salvarNoHistorico()">💾 Salvar no histórico</button>
+      </div>
+    </div>
+    <div class="card">
+      <div id="preview"><p style="text-align:center;color:#999;font-family:'Segoe UI'">O contrato gerado aparecerá aqui.</p></div>
+    </div>
+  </section>
+
+  <!-- 11 HISTÓRICO -->
+  <section class="secao" data-aba="historico">
+    <div class="card">
+      <h2>Histórico <span class="tag">Módulo 11</span></h2>
+      <p class="desc">Todos os contratos gerados ficam salvos neste computador (navegador). Reabra para editar e gerar novamente.</p>
+      <div id="lista-historico"></div>
+    </div>
+  </section>
+
+  <!-- IA -->
+  <section class="secao" data-aba="ia">
+    <div class="card">
+      <h2>Preencher com IA <span class="tag">Diferencial</span></h2>
+      <p class="desc">Cole o texto de um contrato/alteração já registrado <b>ou</b> anexe o PDF. A IA (DeepSeek ou Claude) lê o documento e preenche automaticamente: empresa, sócios, capital, quotas, administradores, endereço e CNAEs.</p>
+      <div class="grade">
+        <div class="campo c12">
+          <label>Texto do contrato (cole aqui)</label>
+          <textarea id="ia-texto" style="min-height:160px" placeholder="Cole aqui o conteúdo do contrato social ou alteração..."></textarea>
+        </div>
+        <div class="campo c12">
+          <label>...ou anexe um PDF</label>
+          <input type="file" id="ia-pdf" accept="application/pdf,.pdf">
+        </div>
+      </div>
+      <div class="barra-acoes">
+        <button class="btn primario" id="btn-extrair" onclick="extrairComIA()">✨ Extrair e preencher</button>
+        <button class="btn contorno" onclick="carregarExemploIA()">📄 Carregar texto de exemplo (teste)</button>
+      </div>
+      <div class="ia-status" id="ia-status"></div>
+    </div>
+    <div class="card">
+      <h2>Configuração da IA</h2>
+      <div class="aviso-seguranca">⚠️ <b>Atenção:</b> a chave de API fica salva apenas neste navegador/computador. Não compartilhe este arquivo com a chave preenchida. O uso da API tem custo por documento.</div>
+      <div class="grade">
+        <div class="campo c4"><label>Provedor de IA</label>
+          <select id="cfg-provedor" onchange="aoTrocarProvedor()">
+            <option value="deepseek">DeepSeek</option>
+            <option value="anthropic">Claude (Anthropic)</option>
+          </select>
+        </div>
+        <div class="campo c5"><label id="lbl-apikey">Chave de API</label><input type="password" id="cfg-apikey" oninput="salvarConfig()"></div>
+        <div class="campo c3"><label>Modelo</label><select id="cfg-modelo" onchange="salvarConfig()"></select></div>
+      </div>
+      <div class="dica" id="dica-apikey"></div>
+    </div>
+  </section>
+
+</main>
+
+<div id="autoteste" style="display:none"></div>
+<footer>MX Contratos · MAXIMOS Soluções Empresariais · funciona offline (exceto a extração por IA)</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   MX CONTRATOS — app de geração de contratos sociais e alterações
+   - 100% client-side (file://). Persistência em localStorage.
+   - IA opcional: chamada direta à Messages API da Anthropic (tool-use).
+   ========================================================================= */
+
+/* ---------------- Estado e persistência ---------------- */
+const CHAVE_ESTADO='mxcontratos_estado_v1';
+const CHAVE_MODELOS='mxcontratos_modelos_v1';
+const CHAVE_HIST='mxcontratos_historico_v1';
+const CHAVE_CFG='mxcontratos_config_v1';
+const CHAVE_DEEPSEEK_PADRAO=''; // chave DeepSeek pre-configurada — troque/limpe aqui ou na aba "Preencher com IA"
+
+const TIPOS_MODELO=['Constituição','Alteração Contratual','Consolidação','Transformação Empresarial','Distrato Social','Outros'];
+
+const CAMPOS_EMPRESA=[
+  ['razao_social','Razão Social',8],['nome_fantasia','Nome Fantasia',4],
+  ['cnpj','CNPJ',4],['nire','NIRE',4],['natureza_juridica','Natureza Jurídica',4],
+  ['endereco','Endereço completo',8],['cep','CEP',2],['bairro','Bairro',2],
+  ['cidade','Cidade',4],['estado','Estado (UF)',2],['telefone','Telefone',3],
+  ['email','E-mail',3],['data_constituicao','Data de constituição',3],['capital_atual','Capital social atual (R$)',3],
+  ['objeto_social','Objeto social atual',12]
+];
+
+const CAMPOS_SOCIO=[
+  ['nome','Nome completo',6],['cpf','CPF',3],['rg','RG',3],
+  ['orgao_emissor','Órgão emissor',3],['nacionalidade','Nacionalidade',3],['estado_civil','Estado civil',3],
+  ['regime_bens','Regime de bens',3],['profissao','Profissão',4],['data_nascimento','Data de nascimento',4],['cnh','CNH (opcional)',4],
+  ['endereco','Endereço completo',6],['cep','CEP',2],['bairro','Bairro',4],
+  ['cidade','Cidade',4],['estado','Estado (UF)',2]
+];
+
+// Alterações: chave/flag, rótulo, e campos específicos [id,rotulo,colspan,tipo]
+const ALTERACOES=[
+  {flag:'alterou_razao_social',rotulo:'Alteração de Razão Social',campos:[['rs_antiga','Razão social anterior',6],['rs_nova','Nova razão social',6]]},
+  {flag:'alterou_nome_fantasia',rotulo:'Alteração de Nome Fantasia',campos:[['nf_antigo','Nome fantasia anterior',6],['nf_novo','Novo nome fantasia',6]]},
+  {flag:'alterou_endereco',rotulo:'Alteração de Endereço',campos:[['end_antigo','Endereço anterior',6],['end_novo','Novo endereço',6]]},
+  {flag:'alterou_atividade',rotulo:'Alteração de Atividade Econômica',campos:[['ativ_novo','Novo objeto social / atividade',12,'textarea']]},
+  {flag:'incluiu_cnae',rotulo:'Inclusão de CNAE',campos:[['cnae_incluir','CNAEs a incluir (um por linha)',12,'textarea']]},
+  {flag:'excluiu_cnae',rotulo:'Exclusão de CNAE',campos:[['cnae_excluir','CNAEs a excluir (um por linha)',12,'textarea']]},
+  {flag:'entrada_socio',rotulo:'Entrada de Sócio',campos:[['entrada_obs','Quem entra (cadastre também na aba Sócios)',12]]},
+  {flag:'saida_socio',rotulo:'Saída de Sócio',campos:[['saida_nome','Sócio que se retira',6],['saida_destino','Destino das quotas',6]]},
+  {flag:'transferencia_quotas',rotulo:'Transferência de Quotas',campos:[['transf_de','De (cedente)',4],['transf_para','Para (cessionário)',4],['transf_qtd','Quantidade de quotas',4]]},
+  {flag:'alterou_capital',rotulo:'Alteração de Capital Social',campos:[['cap_antigo','Capital anterior (R$)',6],['cap_novo','Novo capital (R$)',6]]},
+  {flag:'mudou_administracao',rotulo:'Mudança de Administração',campos:[['adm_obs','Defina na aba Administração',12]]},
+  {flag:'transformacao',rotulo:'Transformação de Natureza Jurídica',campos:[['transf_nat_de','Natureza anterior',6],['transf_nat_para','Nova natureza',6]]},
+  {flag:'consolidacao',rotulo:'Consolidação Contratual',campos:[['consolida_obs','Observações (opcional)',12]]}
+];
+
+let estado=carregarEstado();
+let modelos=carregarModelos();
+let historico=carregarJSON(CHAVE_HIST,[]);
+let config=carregarConfig();
+
+function estadoVazio(){
+  return {empresa:{},socios:[{}],capital:{},administracao:{tipo:'todos',terceiro:{}},alteracoes:{},foro:{},assinatura:{}};
+}
+function carregarEstado(){const e=carregarJSON(CHAVE_ESTADO,null);if(!e)return estadoVazio();if(!e.socios||!e.socios.length)e.socios=[{}];if(!e.administracao)e.administracao={tipo:'todos',terceiro:{}};if(!e.alteracoes)e.alteracoes={};return e;}
+function carregarModelos(){const m=carregarJSON(CHAVE_MODELOS,null);return m&&m.length?m:[];}
+function carregarConfig(){
+  let c=carregarJSON(CHAVE_CFG,null)||{};
+  if(c.apikey!==undefined||c.modelo!==undefined){ // migra formato antigo (chave única era da Anthropic)
+    c={provedor:'deepseek',anthropic:{apikey:c.apikey||'',modelo:c.modelo||'claude-opus-4-8'},deepseek:{apikey:'',modelo:'deepseek-chat'}};
+  }
+  c.provedor=c.provedor||'deepseek';
+  c.deepseek=c.deepseek||{apikey:'',modelo:'deepseek-chat'};
+  if(!c.deepseek.apikey)c.deepseek.apikey=CHAVE_DEEPSEEK_PADRAO; // usa a chave pre-configurada se ainda nao houver uma salva
+  c.anthropic=c.anthropic||{apikey:'',modelo:'claude-opus-4-8'};
+  return c;
+}
+function carregarJSON(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch(e){return fb;}}
+function gravar(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){toast('Não foi possível salvar (armazenamento cheio?)');}}
+let timerSalvar=null,montando=false;
+function salvar(){if(montando)return;coletarFormularios();clearTimeout(timerSalvar);timerSalvar=setTimeout(()=>gravar(CHAVE_ESTADO,estado),250);}
+function salvarConfig(){const prov=el('cfg-provedor').value;config.provedor=prov;config[prov]=config[prov]||{};config[prov].apikey=el('cfg-apikey').value.trim();config[prov].modelo=el('cfg-modelo').value;gravar(CHAVE_CFG,config);}
+
+/* ---------------- Utilidades ---------------- */
+function el(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toast(msg){const t=el('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+function num(v){if(v==null)return 0;let s=String(v).trim();if(!s)return 0;s=s.replace(/[R$\s.]/g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?0:n;}
+function inteiro(v){const n=num(v);return Math.round(n);}
+function moeda(n){return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+/* Número por extenso (reais) — até centenas de milhão */
+function numeroPorExtenso(valor){
+  valor=Math.round((Number(valor)||0)*100)/100;
+  const reais=Math.floor(valor);const centavos=Math.round((valor-reais)*100);
+  let txt=extensoInteiro(reais)+' '+(reais===1?'real':'reais');
+  if(centavos>0)txt+=' e '+extensoInteiro(centavos)+' '+(centavos===1?'centavo':'centavos');
+  return txt;
+}
+function extensoInteiro(n){
+  n=Math.floor(Math.abs(Number(n)||0));
+  if(n===0)return 'zero';
+  const u=['','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+  const dez=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+  const cem=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+  function ate999(x){
+    if(x===0)return '';
+    if(x===100)return 'cem';
+    let p=[];const c=Math.floor(x/100),resto=x%100;
+    if(c>0)p.push(cem[c]);
+    if(resto>0){
+      if(resto<20)p.push(u[resto]);
+      else{const d=Math.floor(resto/10),un=resto%10;p.push(un>0?dez[d]+' e '+u[un]:dez[d]);}
+    }
+    return p.join(' e ');
+  }
+  const grupos=[];let resto=n,i=0;
+  while(resto>0){grupos.push(resto%1000);resto=Math.floor(resto/1000);i++;}
+  const nomes=[['',''],['mil','mil'],['milhão','milhões'],['bilhão','bilhões']];
+  let partes=[];
+  for(let g=grupos.length-1;g>=0;g--){
+    const val=grupos[g];if(val===0)continue;
+    if(g===1){partes.push((val===1?'mil':ate999(val)+' mil'));}
+    else if(g>=2){partes.push(ate999(val)+' '+(val===1?nomes[g][0]:nomes[g][1]));}
+    else partes.push(ate999(val));
+  }
+  // junção com vírgula/e
+  let out='';
+  for(let k=0;k<partes.length;k++){
+    if(k===0)out=partes[k];
+    else if(k===partes.length-1)out+=(partes[k].match(/^(cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos)/)||/mil$/.test(partes[k])?' e ':' e ')+partes[k];
+    else out+=', '+partes[k];
+  }
+  return out;
+}
+const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function dataPorExtenso(iso){
+  if(!iso)return '';const p=iso.split('-');if(p.length!==3)return '';
+  const a=parseInt(p[0]),m=parseInt(p[1]),d=parseInt(p[2]);
+  if(!a||!m||!d)return '';return d+' de '+MESES[m-1]+' de '+a;
+}
+
+/* =========================================================================
+   MOTOR DE TEMPLATE  — {{var}}, {{#each lista}}..{{/each}}, {{#if x}}..{{/if}}, {{#unless x}}..{{/unless}}
+   ========================================================================= */
+function getVal(ctx,caminho){
+  if(caminho==null)return '';
+  if(caminho==='.')return ctx;
+  let cur=ctx;
+  for(const parte of caminho.split('.')){
+    if(cur==null)return '';
+    cur=cur[parte];
+  }
+  return cur==null?'':cur;
+}
+function capturarBloco(tpl,inicio,tipo){
+  const re=new RegExp('\\{\\{\\s*(#'+tipo+'\\b[^}]*|/'+tipo+')\\s*\\}\\}','g');
+  re.lastIndex=inicio;let prof=1,m;
+  while((m=re.exec(tpl))){
+    if(m[1][0]==='#')prof++;else prof--;
+    if(prof===0)return {inner:tpl.slice(inicio,m.index),fim:re.lastIndex};
+  }
+  return {inner:tpl.slice(inicio),fim:tpl.length};
+}
+function renderTemplate(tpl,ctx,st){
+  st=st||{clausula:0}; // contador compartilhado p/ numeração automática de cláusulas
+  const re=/\{\{\s*(#each|#if|#unless|\/each|\/if|\/unless)?\s*([\w.@]+)?\s*\}\}/g;
+  let out='',ultimo=0,m;
+  while((m=re.exec(tpl))){
+    out+=tpl.slice(ultimo,m.index);
+    const ctrl=m[1],nome=m[2];
+    if(!ctrl){
+      if(nome==='clausula'){st.clausula++;out+=ordinalExtensoFem(st.clausula).toUpperCase();}
+      else out+=esc(getVal(ctx,nome));
+      ultimo=re.lastIndex;
+    }else if(ctrl[0]==='#'){
+      const tipo=ctrl.slice(1);
+      const {inner,fim}=capturarBloco(tpl,re.lastIndex,tipo);
+      if(tipo==='each'){
+        const arr=getVal(ctx,nome);
+        if(Array.isArray(arr)){
+          arr.forEach((item,idx)=>{
+            const filho=Object.assign({},ctx,(item&&typeof item==='object')?item:{valor:item},
+              {'@index':idx,'@numero':idx+1,'@primeiro':idx===0,'@ultimo':idx===arr.length-1});
+            out+=renderTemplate(inner,filho,st);
+          });
+        }
+      }else{
+        const v=getVal(ctx,nome);const verdade=!(v===''||v===false||v==null||v===0||(Array.isArray(v)&&!v.length));
+        if((tipo==='if'&&verdade)||(tipo==='unless'&&!verdade))out+=renderTemplate(inner,ctx,st);
+      }
+      ultimo=fim;re.lastIndex=fim;
+    }else{ultimo=re.lastIndex;}
+  }
+  out+=tpl.slice(ultimo);
+  return out;
+}
+function detectarVariaveis(tpl){
+  const set=new Set();const re=/\{\{\s*(?:#(?:each|if|unless)\s+)?([\w.]+)\s*\}\}/g;let m;
+  while((m=re.exec(tpl))){if(!/^@/.test(m[1]))set.add(m[1]);}
+  return [...set];
+}
+
+/* =========================================================================
+   CONTEXTO PARA O TEMPLATE (com campos calculados)
+   ========================================================================= */
+function montarContexto(){
+  // Obs.: a coleta do DOM acontece em gerarContrato()/validar(); aqui trabalhamos só sobre o estado.
+  const e=estado.empresa, ctx=Object.assign({},e);
+  // sócios com qualificação e quotas
+  const capVal=num(estado.capital.valor);
+  const totQ=inteiro(estado.capital.quotas);
+  const valorQuota= totQ>0? capVal/totQ : 0;
+  const socios=estado.socios.filter(s=>s&&(s.nome||s.cpf)).map((s,i)=>{
+    const q=inteiro(s.quotas);
+    return Object.assign({},s,{
+      indice:i+1,
+      quotas:q||'',
+      quotas_num:q,
+      valor:q&&valorQuota?moeda(q*valorQuota):'',
+      percentual: q&&totQ? ((q/totQ*100).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%') :'',
+      qualificacao:qualificarSocio(s)
+    });
+  });
+  ctx.socios=socios;
+  ctx.tem_varios_socios=socios.length>1;
+  ctx.socio_palavra=socios.length>1?'sócios':'sócio';
+  ctx.qtd_socios=socios.length;
+  const plural=socios.length>1;
+  ctx.resolve=plural?'resolvem':'resolve';
+  ctx.constitui=plural?'constituem':'constitui';
+  ctx.assina=plural?'assinam':'assina';
+  ctx.declara=plural?'declaram':'declara';
+  ctx.os_socios=plural?'os sócios':'o sócio';
+  ctx.do_socio=plural?'dos sócios':'do sócio';
+  ctx.socios_nomes=socios.map(s=>s.nome).filter(Boolean).join(', ').replace(/, ([^,]*)$/,' e $1');
+  // capital
+  ctx.capital_valor=moeda(capVal);
+  ctx.capital_valor_extenso=capVal?numeroPorExtenso(capVal):'';
+  ctx.capital_quotas=totQ||'';
+  ctx.valor_quota=valorQuota?moeda(valorQuota):'';
+  // administração
+  ctx.administrador=descreverAdministrador(socios);
+  // alterações (flags + campos)
+  const alt=estado.alteracoes||{};
+  ALTERACOES.forEach(a=>{ctx[a.flag]=!!alt[a.flag];});
+  Object.keys(alt).forEach(k=>{if(typeof alt[k]==='string')ctx[k]=alt[k];});
+  ctx.tem_alteracoes=ALTERACOES.some(a=>alt[a.flag]);
+  ctx.lista_alteracoes=ALTERACOES.filter(a=>alt[a.flag]).map(a=>a.rotulo);
+  // foro / assinatura
+  ctx.foro_comarca=estado.foro.comarca||'';ctx.foro_cidade=estado.foro.cidade||'';ctx.foro_uf=(estado.foro.uf||'').toUpperCase();
+  ctx.foro=ctx.foro_comarca?('Foro da Comarca de '+ctx.foro_comarca+(ctx.foro_uf?'/'+ctx.foro_uf:'')):'';
+  ctx.assinatura_cidade=estado.assinatura.cidade||'';
+  ctx.assinatura_uf=(estado.assinatura.uf||'').toUpperCase();
+  ctx.assinatura_data=dataPorExtenso(estado.assinatura.data);
+  ctx.local_data=(ctx.assinatura_cidade?ctx.assinatura_cidade+(ctx.assinatura_uf?'/'+ctx.assinatura_uf:'')+', ':'')+(ctx.assinatura_data||'');
+  return ctx;
+}
+function generoSocio(s){
+  const ec=((s.estado_civil||'').trim().toLowerCase().split(/\s+/)[0])||'';
+  if(/^(casad|solteir|divorciad|vi[úu]v|separad)[ao]$/.test(ec))return ec.slice(-1)==='a'?'f':'m';
+  const nome=((s.nome||'').trim().split(/\s+/)[0]||'').toLowerCase();
+  if(/a$/.test(nome))return 'f';
+  if(nome)return 'm';
+  return '?';
+}
+function conc(gen,masc,fem){return gen==='m'?masc:gen==='f'?fem:masc+'(a)';}
+function ordinalExtensoFem(n){
+  n=Math.floor(Number(n)||0);if(n<=0)return '';
+  const u=['','primeira','segunda','terceira','quarta','quinta','sexta','sétima','oitava','nona'];
+  const d=['','décima','vigésima','trigésima','quadragésima','quinquagésima','sexagésima','septuagésima','octogésima','nonagésima'];
+  if(n<10)return u[n];
+  if(n<100){const dz=Math.floor(n/10),un=n%10;return d[dz]+(un?' '+u[un]:'');}
+  if(n===100)return 'centésima';
+  return n+'ª';
+}
+function qualificarSocio(s){
+  if(!s||!s.nome)return '';
+  const gen=generoSocio(s);
+  let p=s.nome;const partes=[];
+  if(s.nacionalidade)partes.push(s.nacionalidade.toLowerCase());
+  if(s.estado_civil){let ec=s.estado_civil.toLowerCase();if(/casad/.test(ec)&&s.regime_bens)ec+=' sob o regime de '+s.regime_bens.toLowerCase();partes.push(ec);}
+  if(s.profissao)partes.push(s.profissao.toLowerCase());
+  if(partes.length)p+=', '+partes.join(', ');
+  if(s.data_nascimento)p+=', '+conc(gen,'nascido','nascida')+' em '+s.data_nascimento;
+  if(s.cpf)p+=', '+conc(gen,'inscrito','inscrita')+' no CPF sob o nº '+s.cpf;
+  if(s.rg)p+=', '+conc(gen,'portador','portadora')+' do RG nº '+s.rg+(s.orgao_emissor?' '+s.orgao_emissor:'');
+  if(s.endereco)p+=', residente e '+conc(gen,'domiciliado','domiciliada')+' em '+s.endereco+(s.bairro?', '+s.bairro:'')+(s.cidade?', '+s.cidade:'')+(s.estado?'/'+s.estado:'')+(s.cep?', CEP '+s.cep:'');
+  return p;
+}
+function descreverAdministrador(socios){
+  const a=estado.administracao||{};
+  if(a.tipo==='todos')return 'todos os sócios';
+  if(a.tipo==='terceiro'){const t=a.terceiro||{};return (t.nome||'(administrador a definir)')+(t.cpf?', CPF '+t.cpf:'');}
+  if(a.tipo&&a.tipo.indexOf('socio_')===0){const i=parseInt(a.tipo.split('_')[1]);const s=socios[i];return s?s.nome:'(sócio)';}
+  return '';
+}
+
+/* =========================================================================
+   RENDERIZAÇÃO DE FORMULÁRIOS
+   ========================================================================= */
+function montarFormEmpresa(){
+  const c=el('form-empresa');c.innerHTML='';
+  CAMPOS_EMPRESA.forEach(([id,rot,span])=>{
+    const div=document.createElement('div');div.className='campo c'+span;
+    let tag;
+    if(id==='objeto_social')tag=`<textarea id="emp_${id}" oninput="salvar()"></textarea>`;
+    else{
+      const mk=MASCARAS_EMPRESA[id];
+      const blur=id==='cep'?' onblur="buscarCep(this)"':'';
+      tag=`<input id="emp_${id}"${mk?` data-mask="${mk}"`:''} oninput="${mk?'mascarar(this);':''}salvar()"${blur}>`;
+    }
+    div.innerHTML=`<label>${rot}</label>${tag}`;c.appendChild(div);
+  });
+  CAMPOS_EMPRESA.forEach(([id])=>{const inp=el('emp_'+id);if(inp)inp.value=estado.empresa[id]||'';});
+}
+function montarFormSocios(){
+  const c=el('lista-socios');c.innerHTML='';
+  estado.socios.forEach((s,idx)=>{
+    const div=document.createElement('div');div.className='socio';
+    let campos='';
+    CAMPOS_SOCIO.forEach(([id,rot,span])=>{
+      const mk=MASCARAS_SOCIO[id];
+      const blur=id==='cep'?' onblur="buscarCep(this)"':'';
+      campos+=`<div class="campo c${span}"><label>${rot}</label><input data-socio="${idx}" data-campo="${id}"${mk?` data-mask="${mk}"`:''} oninput="${mk?'mascarar(this);':''}salvar()"${blur}></div>`;
+    });
+    div.innerHTML=`<div class="cab"><strong>Sócio ${idx+1}</strong>${estado.socios.length>1?`<button class="btn perigo remover" onclick="removerSocio(${idx})">✕ Remover</button>`:''}</div><div class="grade">${campos}</div>`;
+    c.appendChild(div);
+  });
+  document.querySelectorAll('[data-socio]').forEach(inp=>{
+    const i=+inp.dataset.socio,k=inp.dataset.campo;inp.value=(estado.socios[i]&&estado.socios[i][k])||'';
+  });
+}
+function adicionarSocio(){coletarFormularios();estado.socios.push({});salvar();montarFormSocios();montarTabelaQuotas();montarOpcoesAdmin();toast('Sócio adicionado');}
+function removerSocio(i){coletarFormularios();estado.socios.splice(i,1);if(!estado.socios.length)estado.socios=[{}];salvar();montarFormSocios();montarTabelaQuotas();montarOpcoesAdmin();}
+function montarOpcoesAdmin(){
+  const c=el('opcoes-admin');c.innerHTML='';
+  const opts=[];
+  estado.socios.forEach((s,i)=>{if(s&&s.nome)opts.push(['socio_'+i,'Sócio '+(i+1)+(s.nome?' — '+s.nome:'')]);});
+  opts.push(['todos','Todos os sócios']);
+  opts.push(['terceiro','Terceiro administrador (não sócio)']);
+  opts.forEach(([val,rot])=>{
+    const id='adm_op_'+val;
+    const wrap=document.createElement('label');wrap.style.cssText='display:flex;gap:10px;align-items:center;padding:8px 0;cursor:pointer;font-weight:500;color:var(--tinta)';
+    wrap.innerHTML=`<input type="radio" name="admtipo" value="${val}" id="${id}" style="width:auto" onchange="aoMudarAdmin()"> ${rot}`;
+    c.appendChild(wrap);
+  });
+  const atual=estado.administracao.tipo||'todos';
+  const r=el('adm_op_'+atual)||el('adm_op_todos');if(r)r.checked=true;
+  aoMudarAdmin(true);
+}
+function aoMudarAdmin(silencioso){
+  const sel=document.querySelector('input[name="admtipo"]:checked');
+  const tipo=sel?sel.value:'todos';
+  estado.administracao.tipo=tipo;
+  el('admin-terceiro').style.display = tipo==='terceiro'?'grid':'none';
+  if(!silencioso)salvar();
+}
+function montarAlteracoes(){
+  const c=el('lista-alteracoes');c.innerHTML='';
+  ALTERACOES.forEach(a=>{
+    const marcado=!!(estado.alteracoes&&estado.alteracoes[a.flag]);
+    const div=document.createElement('div');div.className='alt-item';
+    let campos='';
+    a.campos.forEach(([id,rot,span,tipo])=>{
+      const ctrl=tipo==='textarea'?`<textarea data-alt="${id}" oninput="salvar()"></textarea>`:`<input data-alt="${id}" oninput="salvar()">`;
+      campos+=`<div class="campo c${span}"><label>${rot}</label>${ctrl}</div>`;
+    });
+    div.innerHTML=`<div class="alt-cab" onclick="alternarAlteracao('${a.flag}',event)">
+        <input type="checkbox" ${marcado?'checked':''} data-flag="${a.flag}" onclick="event.stopPropagation();alternarAlteracao('${a.flag}')">
+        <label>${a.rotulo}</label></div>
+      <div class="alt-campos ${marcado?'aberto':''}" id="altc_${a.flag}"><div class="grade">${campos}</div></div>`;
+    c.appendChild(div);
+  });
+  document.querySelectorAll('[data-alt]').forEach(inp=>{const k=inp.dataset.alt;inp.value=(estado.alteracoes&&estado.alteracoes[k])||'';});
+}
+function alternarAlteracao(flag,ev){
+  if(ev&&ev.target&&ev.target.tagName==='INPUT')return; // clique no checkbox trata sozinho
+  estado.alteracoes=estado.alteracoes||{};
+  const chk=document.querySelector(`[data-flag="${flag}"]`);
+  if(ev===undefined){estado.alteracoes[flag]=chk.checked;}
+  else{estado.alteracoes[flag]=!estado.alteracoes[flag];chk.checked=estado.alteracoes[flag];}
+  el('altc_'+flag).classList.toggle('aberto',estado.alteracoes[flag]);
+  salvar();
+}
+
+/* ---------------- Quotas ---------------- */
+function montarTabelaQuotas(){
+  const tb=el('tabela-quotas').querySelector('tbody');tb.innerHTML='';
+  estado.socios.forEach((s,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${esc(s.nome||('Sócio '+(i+1)))}</td>
+      <td><input data-quota="${i}" inputmode="numeric" oninput="aoEditarCapital()" value="${s.quotas||''}"></td>
+      <td class="qv-${i}">—</td><td class="qp-${i}">—</td>`;
+    tb.appendChild(tr);
+  });
+  el('capital_valor').value=estado.capital.valor||'';
+  el('capital_quotas').value=estado.capital.quotas||'';
+  aoEditarCapital();
+}
+function aoEditarCapital(){
+  estado.capital.valor=el('capital_valor').value;
+  estado.capital.quotas=el('capital_quotas').value;
+  document.querySelectorAll('[data-quota]').forEach(inp=>{estado.socios[+inp.dataset.quota].quotas=inp.value;});
+  const capVal=num(estado.capital.valor),totQ=inteiro(estado.capital.quotas);
+  const vq=totQ>0?capVal/totQ:0;
+  el('capital_valorquota').value=vq?moeda(vq):'';
+  let somaQ=0,somaV=0;
+  estado.socios.forEach((s,i)=>{
+    const q=inteiro(s.quotas);somaQ+=q;const v=q*vq;somaV+=v;
+    const cv=document.querySelector('.qv-'+i),cp=document.querySelector('.qp-'+i);
+    if(cv)cv.textContent=q?moeda(v):'—';
+    if(cp)cp.textContent=(q&&totQ)?((q/totQ*100).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%'):'—';
+  });
+  el('q-total-quotas').textContent=somaQ.toLocaleString('pt-BR');
+  el('q-total-valor').textContent=moeda(somaV);
+  const pct=totQ?somaQ/totQ*100:0;
+  const elp=el('q-total-pct');
+  elp.textContent=pct.toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
+  elp.className=Math.abs(pct-100)<0.01?'pct-ok':'pct-erro';
+  const av=el('quotas-aviso');
+  if(totQ===0){av.innerHTML='';}
+  else if(somaQ===totQ){av.innerHTML='<ul class="avisos"><li class="ok">✔ A soma das quotas fecha com o total informado.</li></ul>';}
+  else{av.innerHTML=`<ul class="avisos"><li class="e">✕ A soma das quotas (${somaQ.toLocaleString('pt-BR')}) não fecha com o total (${totQ.toLocaleString('pt-BR')}). Diferença: ${(totQ-somaQ).toLocaleString('pt-BR')}.</li></ul>`;}
+  salvar();
+}
+
+/* ---------------- Foro / Assinatura ---------------- */
+function sincronizarForo(){if(!el('foro_cidade').value)el('foro_cidade').value=el('foro_comarca').value;atualizarPreviasForo();}
+function atualizarPreviasForo(){
+  const c=el('foro_comarca').value,uf=el('foro_uf').value;
+  el('foro-previa').textContent=c?('Foro da Comarca de '+c+(uf?'/'+uf.toUpperCase():'')+'.'):'—';
+}
+function montarDataExtenso(){
+  const cid=el('ass_cidade').value,uf=el('ass_uf').value,d=el('ass_data').value;
+  const ext=dataPorExtenso(d);
+  el('ass-previa').textContent=(cid?cid+(uf?'/'+uf.toUpperCase():''):'')+(ext?', '+ext+'.':'') || '—';
+}
+
+/* ---------------- Coleta dos formulários para o estado ---------------- */
+function coletarFormularios(){
+  CAMPOS_EMPRESA.forEach(([id])=>{const i=el('emp_'+id);if(i)estado.empresa[id]=i.value;});
+  document.querySelectorAll('[data-socio]').forEach(inp=>{const i=+inp.dataset.socio,k=inp.dataset.campo;if(estado.socios[i])estado.socios[i][k]=inp.value;});
+  if(el('capital_valor')){estado.capital.valor=el('capital_valor').value;estado.capital.quotas=el('capital_quotas').value;}
+  document.querySelectorAll('[data-quota]').forEach(inp=>{if(estado.socios[+inp.dataset.quota])estado.socios[+inp.dataset.quota].quotas=inp.value;});
+  estado.administracao.terceiro={nome:val('adm_nome'),cpf:val('adm_cpf'),rg:val('adm_rg'),endereco:val('adm_endereco'),cargo:val('adm_cargo')};
+  estado.alteracoes=estado.alteracoes||{};
+  document.querySelectorAll('[data-alt]').forEach(inp=>{estado.alteracoes[inp.dataset.alt]=inp.value;});
+  estado.foro={comarca:val('foro_comarca'),cidade:val('foro_cidade'),uf:val('foro_uf')};
+  estado.assinatura={cidade:val('ass_cidade'),data:val('ass_data'),uf:val('ass_uf')};
+}
+function val(id){const e=el(id);return e?e.value:'';}
+function preencherFormularios(){
+  montando=true; // evita que a montagem dispare salvar()/coletar antes de todos os campos existirem
+  montarFormEmpresa();montarFormSocios();montarTabelaQuotas();montarOpcoesAdmin();montarAlteracoes();
+  ['adm_nome','adm_cpf','adm_rg','adm_endereco','adm_cargo'].forEach(k=>{const i=el(k);if(i&&estado.administracao.terceiro)i.value=estado.administracao.terceiro[k.replace('adm_','')]||(k==='adm_cargo'?'Administrador':'');});
+  el('foro_comarca').value=estado.foro.comarca||'';el('foro_cidade').value=estado.foro.cidade||'';el('foro_uf').value=estado.foro.uf||'';
+  el('ass_cidade').value=estado.assinatura.cidade||'';el('ass_data').value=estado.assinatura.data||'';el('ass_uf').value=estado.assinatura.uf||'';
+  document.querySelectorAll('[data-mask]').forEach(mascarar);
+  montando=false;
+  atualizarPreviasForo();montarDataExtenso();
+}
+
+/* ---------------- Máscaras, CEP (ViaCEP) e backup de dados ---------------- */
+const MASCARAS_EMPRESA={cnpj:'cnpj',cep:'cep',telefone:'tel'};
+const MASCARAS_SOCIO={cpf:'cpf',cep:'cep'};
+function formatarMascara(t,valor){
+  let v=String(valor||'').replace(/\D/g,'');
+  if(t==='cpf')return v.slice(0,11).replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  if(t==='cnpj')return v.slice(0,14).replace(/(\d{2})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1/$2').replace(/(\d{4})(\d{1,2})$/,'$1-$2');
+  if(t==='cep')return v.slice(0,8).replace(/(\d{5})(\d)/,'$1-$2');
+  if(t==='tel'){v=v.slice(0,11);if(v.length>10)return v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');if(v.length>6)return v.replace(/(\d{2})(\d{4})(\d{0,4})/,'($1) $2-$3');if(v.length>2)return v.replace(/(\d{2})(\d{0,5})/,'($1) $2');return v;}
+  return valor;
+}
+function mascarar(elm){if(elm&&elm.dataset&&elm.dataset.mask)elm.value=formatarMascara(elm.dataset.mask,elm.value);}
+async function buscarCep(elc){
+  const cep=(elc.value||'').replace(/\D/g,'');
+  if(cep.length!==8)return;
+  try{
+    const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/');
+    const d=await r.json();
+    if(!d||d.erro)return;
+    if(elc.id&&elc.id.indexOf('emp_')===0){
+      setCampoEmpresa('endereco',d.logradouro);setCampoEmpresa('bairro',d.bairro);setCampoEmpresa('cidade',d.localidade);setCampoEmpresa('estado',d.uf);
+    }else if(elc.dataset&&elc.dataset.socio!==undefined){
+      const i=elc.dataset.socio;
+      setCampoSocio(i,'endereco',d.logradouro);setCampoSocio(i,'bairro',d.bairro);setCampoSocio(i,'cidade',d.localidade);setCampoSocio(i,'estado',d.uf);
+    }
+    salvar();toast('Endereço preenchido pelo CEP');
+  }catch(e){/* offline ou CEP indisponível: ignora silenciosamente */}
+}
+function setCampoEmpresa(campo,valor){if(!valor)return;const e=el('emp_'+campo);if(e)e.value=valor;estado.empresa[campo]=valor;}
+function setCampoSocio(i,campo,valor){if(!valor)return;const inp=document.querySelector('[data-socio="'+i+'"][data-campo="'+campo+'"]');if(inp)inp.value=valor;if(estado.socios[i])estado.socios[i][campo]=valor;}
+function exportarDados(){
+  coletarFormularios();
+  const blob=new Blob([JSON.stringify(estado,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const nome=((estado.empresa.razao_social||'mx-contratos').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_'))||'mx-contratos';
+  a.download=nome+'_dados.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  toast('Dados exportados');
+}
+function importarDados(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{
+    const d=JSON.parse(r.result);if(!d||!d.empresa)throw 0;
+    estado=d;
+    if(!estado.socios||!estado.socios.length)estado.socios=[{}];
+    if(!estado.administracao)estado.administracao={tipo:'todos',terceiro:{}};
+    if(!estado.alteracoes)estado.alteracoes={};
+    if(!estado.capital)estado.capital={};if(!estado.foro)estado.foro={};if(!estado.assinatura)estado.assinatura={};
+    gravar(CHAVE_ESTADO,estado);preencherFormularios();abrirAba('empresa');toast('Dados importados');
+  }catch(e){toast('Arquivo inválido');}};
+  r.readAsText(f,'utf-8');ev.target.value='';
+}
+function limparTudo(){
+  if(!confirm('Isso apaga os dados preenchidos (empresa, sócios, quotas, alterações, foro, assinatura) deste navegador. Os modelos e o histórico permanecem. Continuar?'))return;
+  estado=estadoVazio();gravar(CHAVE_ESTADO,estado);preencherFormularios();abrirAba('empresa');toast('Dados limpos');
+}
+
+/* =========================================================================
+   MODELOS
+   ========================================================================= */
+function novoModelo(){
+  const m={id:'m'+Date.now(),nome:'Novo modelo',tipo:'Constituição',corpo:''};
+  modelos.push(m);gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();
+}
+function carregarModeloArquivo(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{modelos.push({id:'m'+Date.now(),nome:f.name.replace(/\.[^.]+$/,''),tipo:'Outros',corpo:r.result});gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();toast('Modelo carregado');};
+  r.readAsText(f,'utf-8');ev.target.value='';
+}
+function montarListaModelos(){
+  const c=el('lista-modelos');c.innerHTML='';
+  if(!modelos.length){c.innerHTML='<div class="card"><p class="desc" style="margin:0">Nenhum modelo cadastrado. Crie um novo ou insira os modelos de exemplo.</p></div>';return;}
+  modelos.forEach((m,i)=>{
+    const vars=detectarVariaveis(m.corpo);
+    const div=document.createElement('div');div.className='modelo-item';
+    div.innerHTML=`<div class="cab">
+        <input style="max-width:280px" value="${esc(m.nome)}" onchange="editarModelo(${i},'nome',this.value)">
+        <select onchange="editarModelo(${i},'tipo',this.value)">${TIPOS_MODELO.map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select>
+        <button class="btn perigo" style="margin-left:auto" onclick="removerModelo(${i})">✕</button>
+      </div>
+      <textarea style="min-height:140px" oninput="editarModelo(${i},'corpo',this.value,true)">${esc(m.corpo)}</textarea>
+      <div class="vars-detectadas">Variáveis detectadas (${vars.length}): ${vars.length?vars.map(v=>`<span class="pill">{{${v}}}</span>`).join(''):'<i>nenhuma — use {{razao_social}}, {{#each socios}}, etc.</i>'}</div>`;
+    c.appendChild(div);
+  });
+}
+let timerModelo=null;
+function editarModelo(i,campo,valor,debounce){
+  modelos[i][campo]=valor;
+  if(debounce){clearTimeout(timerModelo);timerModelo=setTimeout(()=>{gravar(CHAVE_MODELOS,modelos);montarListaModelos();},500);}
+  else{gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();}
+}
+function removerModelo(i){if(!confirm('Remover este modelo?'))return;modelos.splice(i,1);gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();}
+function atualizarSeletorModelos(){
+  const s=el('sel-modelo');const atual=s.value;s.innerHTML='';
+  if(!modelos.length){s.innerHTML='<option value="">— cadastre um modelo na aba Modelos —</option>';return;}
+  modelos.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.nome+' ('+m.tipo+')';s.appendChild(o);});
+  if(atual)s.value=atual;
+}
+
+/* =========================================================================
+   GERAÇÃO
+   ========================================================================= */
+function validar(){
+  coletarFormularios();const probs=[];
+  if(!estado.empresa.razao_social)probs.push(['e','Informe a Razão Social na aba Dados da Empresa.']);
+  const socios=estado.socios.filter(s=>s&&s.nome);
+  if(!socios.length)probs.push(['e','Cadastre pelo menos um sócio com nome.']);
+  socios.forEach((s,i)=>{if(!s.cpf)probs.push(['w','Sócio '+(i+1)+' ('+s.nome+') está sem CPF.']);});
+  const capVal=num(estado.capital.valor),totQ=inteiro(estado.capital.quotas);
+  if(!capVal)probs.push(['w','Capital social não informado.']);
+  if(totQ>0){const somaQ=estado.socios.reduce((a,s)=>a+inteiro(s.quotas),0);if(somaQ!==totQ)probs.push(['e','A soma das quotas não fecha 100% (aba Quotas).']);}
+  if(!estado.assinatura.data)probs.push(['w','Data de assinatura não informada.']);
+  if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
+  return probs;
+}
+function gerarContrato(){
+  const id=el('sel-modelo').value;
+  const avisosEl=el('avisos-gerar');
+  if(!id){avisosEl.innerHTML='<li class="e">Selecione um modelo (ou cadastre um na aba Modelos).</li>';return;}
+  const modelo=modelos.find(m=>m.id===id);
+  const probs=validar();
+  let html='';
+  probs.forEach(([tp,msg])=>html+=`<li class="${tp}">${tp==='e'?'✕':'⚠'} ${esc(msg)}</li>`);
+  const temErro=probs.some(p=>p[0]==='e');
+  if(!temErro)html+='<li class="ok">✔ Campos obrigatórios preenchidos. Contrato gerado abaixo.</li>';
+  avisosEl.innerHTML=html;
+  if(temErro){toast('Corrija as pendências em vermelho antes de gerar.');return;}
+  const ctx=montarContexto();
+  let texto;
+  try{texto=renderTemplate(modelo.corpo,ctx);}catch(e){avisosEl.innerHTML+='<li class="e">Erro ao processar o modelo: '+esc(e.message)+'</li>';return;}
+  el('preview').innerHTML=textoParaHtml(texto,modelo.nome);
+  el('card-exportar').style.display='block';
+  el('card-exportar').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function textoParaHtml(texto,titulo){
+  // negrito **x**, parágrafos por linha em branco, quebras simples por <br>
+  let t=esc(texto).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  const paras=t.split(/\n\s*\n/).map(p=>'<p>'+p.replace(/\n/g,'<br>')+'</p>').join('');
+  return paras;
+}
+function copiarTexto(){
+  const tmp=el('preview').innerText;
+  navigator.clipboard.writeText(tmp).then(()=>toast('Texto copiado'),()=>toast('Não foi possível copiar'));
+}
+function baixarWord(){
+  const conteudo=el('preview').innerHTML;
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>
+    @page{size:A4;margin:2.5cm 2.5cm}
+    body{font-family:"Times New Roman",serif;font-size:12pt;line-height:1.6;text-align:justify}
+    p{margin:0 0 10pt} strong{font-weight:bold}
+    .assina{margin-top:40pt;text-align:center}</style></head><body>${conteudo}</body></html>`;
+  const blob=new Blob(['﻿',html],{type:'application/msword'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const nome=(estado.empresa.razao_social||'contrato').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'_');
+  a.download=nome+'.doc';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+
+/* =========================================================================
+   HISTÓRICO
+   ========================================================================= */
+function salvarNoHistorico(){
+  const id=el('sel-modelo').value;const modelo=modelos.find(m=>m.id===id);
+  coletarFormularios();
+  const item={
+    id:'h'+Date.now(),
+    empresa:estado.empresa.razao_social||'(sem nome)',
+    tipo:modelo?modelo.tipo:'—',
+    modeloNome:modelo?modelo.nome:'—',
+    data:new Date().toLocaleString('pt-BR'),
+    versao:(historico.filter(h=>h.empresa===(estado.empresa.razao_social||'(sem nome)')).length+1),
+    html:el('preview').innerHTML,
+    snapshot:JSON.parse(JSON.stringify(estado))
+  };
+  historico.unshift(item);gravar(CHAVE_HIST,historico);montarHistorico();toast('Salvo no histórico');
+}
+function montarHistorico(){
+  const c=el('lista-historico');c.innerHTML='';
+  if(!historico.length){c.innerHTML='<p class="desc" style="margin:0">Nenhum contrato salvo ainda.</p>';return;}
+  historico.forEach((h,i)=>{
+    const div=document.createElement('div');div.className='hist-item';
+    div.innerHTML=`<div class="info"><b>${esc(h.empresa)}</b> <span class="badge">${esc(h.tipo)}</span> <span class="badge">v${h.versao}</span>
+        <small>${esc(h.modeloNome)} · ${esc(h.data)}</small></div>
+      <button class="btn contorno" onclick="reabrirHistorico(${i})">Reabrir</button>
+      <button class="btn contorno" onclick="verHistorico(${i})">Ver</button>
+      <button class="btn perigo" onclick="removerHistorico(${i})">✕</button>`;
+    c.appendChild(div);
+  });
+}
+function reabrirHistorico(i){estado=JSON.parse(JSON.stringify(historico[i].snapshot));gravar(CHAVE_ESTADO,estado);preencherFormularios();abrirAba('empresa');toast('Estudo reaberto para edição');}
+function verHistorico(i){el('preview').innerHTML=historico[i].html;el('card-exportar').style.display='block';abrirAba('gerar');}
+function removerHistorico(i){if(!confirm('Remover do histórico?'))return;historico.splice(i,1);gravar(CHAVE_HIST,historico);montarHistorico();}
+
+/* =========================================================================
+   IA — extração via Messages API (tool-use forçado)
+   ========================================================================= */
+const FERRAMENTA_EXTRACAO={
+  name:'preencher_contrato',
+  description:'Preenche os dados estruturados extraídos de um contrato social ou alteração contratual brasileira.',
+  input_schema:{
+    type:'object',
+    properties:{
+      empresa:{type:'object',properties:{
+        razao_social:{type:'string'},nome_fantasia:{type:'string'},cnpj:{type:'string'},nire:{type:'string'},
+        natureza_juridica:{type:'string'},endereco:{type:'string'},cep:{type:'string'},bairro:{type:'string'},
+        cidade:{type:'string'},estado:{type:'string'},telefone:{type:'string'},email:{type:'string'},
+        data_constituicao:{type:'string'},capital_atual:{type:'string'},objeto_social:{type:'string'}
+      }},
+      socios:{type:'array',items:{type:'object',properties:{
+        nome:{type:'string'},cpf:{type:'string'},rg:{type:'string'},orgao_emissor:{type:'string'},
+        nacionalidade:{type:'string'},estado_civil:{type:'string'},regime_bens:{type:'string'},
+        profissao:{type:'string'},data_nascimento:{type:'string'},endereco:{type:'string'},
+        cep:{type:'string'},bairro:{type:'string'},cidade:{type:'string'},estado:{type:'string'},
+        quotas:{type:'string',description:'quantidade de quotas do sócio, somente números'}
+      }}},
+      capital:{type:'object',properties:{valor:{type:'string',description:'valor total do capital, ex 10.000,00'},quotas:{type:'string',description:'quantidade total de quotas'}}},
+      cnaes:{type:'array',items:{type:'string'}}
+    },
+    required:['empresa','socios']
+  }
+};
+/* ---- Configuração do provedor de IA (DeepSeek / Anthropic) ---- */
+const MODELOS_IA={
+  deepseek:[['deepseek-chat','DeepSeek V3 — recomendado'],['deepseek-reasoner','DeepSeek R1 — raciocínio (mais lento)']],
+  anthropic:[['claude-opus-4-8','Opus 4.8 — máxima precisão'],['claude-sonnet-4-6','Sonnet 4.6 — equilíbrio'],['claude-haiku-4-5','Haiku 4.5 — mais barato']]
+};
+const INFO_PROVEDOR={
+  deepseek:{ph:'sk-...',dica:'Crie a chave em <code>platform.deepseek.com</code> → API Keys. PDF digitalizado (imagem) não é lido pelo DeepSeek — nesse caso, cole o texto.'},
+  anthropic:{ph:'sk-ant-...',dica:'Crie a chave em <code>console.anthropic.com</code> → API Keys. Lê PDF nativamente.'}
+};
+function montarConfigIA(){
+  const prov=config.provedor||'deepseek';
+  el('cfg-provedor').value=prov;
+  const conf=config[prov]||{};
+  const sel=el('cfg-modelo');sel.innerHTML='';
+  MODELOS_IA[prov].forEach(([v,r])=>{const o=document.createElement('option');o.value=v;o.textContent=r;sel.appendChild(o);});
+  sel.value=conf.modelo||MODELOS_IA[prov][0][0];
+  el('cfg-apikey').value=conf.apikey||'';
+  el('cfg-apikey').placeholder=INFO_PROVEDOR[prov].ph;
+  el('lbl-apikey').textContent='Chave de API ('+(prov==='deepseek'?'DeepSeek':'Anthropic')+')';
+  el('dica-apikey').innerHTML=INFO_PROVEDOR[prov].dica+' A chave fica salva só neste computador; o uso tem custo por documento.';
+}
+function aoTrocarProvedor(){config.provedor=el('cfg-provedor').value;gravar(CHAVE_CFG,config);montarConfigIA();}
+
+const PROMPT_EXTRACAO_JSON=`Você é um extrator de dados de contratos sociais e alterações contratuais brasileiras. Leia o DOCUMENTO e responda APENAS com um objeto JSON válido (sem comentários e sem texto fora do JSON), exatamente nesta estrutura:
+{
+ "empresa":{"razao_social":"","nome_fantasia":"","cnpj":"","nire":"","natureza_juridica":"","endereco":"","cep":"","bairro":"","cidade":"","estado":"","telefone":"","email":"","data_constituicao":"","capital_atual":"","objeto_social":""},
+ "socios":[{"nome":"","cpf":"","rg":"","orgao_emissor":"","nacionalidade":"","estado_civil":"","regime_bens":"","profissao":"","data_nascimento":"","endereco":"","cep":"","bairro":"","cidade":"","estado":"","quotas":""}],
+ "capital":{"valor":"","quotas":""},
+ "cnaes":[]
+}
+Regras: use exatamente os valores do documento; "quotas" de cada sócio e "capital.quotas" apenas números; "capital.valor" com vírgula decimal (ex.: 10.000,00); campos ausentes como string vazia; "socios" deve ter um objeto por sócio; "cnaes" é uma lista de strings (vazia se não houver).`;
+
+const CONTRATO_EXEMPLO=`INSTRUMENTO PARTICULAR DE CONSTITUIÇÃO DE SOCIEDADE EMPRESÁRIA LIMITADA - PADARIA E CONFEITARIA PÃO DOURADO LTDA
+
+João Carlos da Silva, brasileiro, casado sob o regime de comunhão parcial de bens, empresário, nascido em 12/03/1980, portador do RG nº 12.345.678-9 SSP/SP, inscrito no CPF sob nº 123.456.789-00, residente e domiciliado na Rua das Flores, nº 100, Centro, Rio Claro/SP, CEP 13500-000;
+
+Maria Aparecida Souza, brasileira, solteira, contadora, nascida em 25/07/1985, portadora do RG nº 98.765.432-1 SSP/SP, inscrita no CPF sob nº 987.654.321-00, residente e domiciliada na Avenida Brasil, nº 250, Jardim América, Rio Claro/SP, CEP 13501-000;
+
+resolvem constituir uma sociedade empresária limitada, mediante as seguintes cláusulas:
+
+CLÁUSULA 1ª - A sociedade girará sob a denominação de PADARIA E CONFEITARIA PÃO DOURADO LTDA, nome fantasia "Pão Dourado", com sede na Rua XV de Novembro, nº 500, Centro, Rio Claro/SP, CEP 13500-100.
+
+CLÁUSULA 2ª - O objeto social é a fabricação e o comércio varejista de pães, bolos, doces e produtos de panificação e confeitaria. CNAEs: 1091-1/01 - Fabricação de produtos de panificação; 4721-1/02 - Padaria e confeitaria com predominância de revenda.
+
+CLÁUSULA 3ª - O capital social é de R$ 50.000,00 (cinquenta mil reais), totalmente integralizado, dividido em 50.000 quotas no valor de R$ 1,00 cada, assim distribuídas: João Carlos da Silva subscreve 30.000 quotas, no valor de R$ 30.000,00; Maria Aparecida Souza subscreve 20.000 quotas, no valor de R$ 20.000,00.
+
+CLÁUSULA 4ª - A administração da sociedade caberá a João Carlos da Silva, com uso isolado da denominação social.
+
+CLÁUSULA 5ª - Fica eleito o foro da Comarca de Rio Claro/SP para dirimir quaisquer dúvidas oriundas deste contrato.
+
+Rio Claro/SP, 15 de janeiro de 2024.
+
+João Carlos da Silva                    Maria Aparecida Souza`;
+function carregarExemploIA(){el('ia-texto').value=CONTRATO_EXEMPLO;el('ia-pdf').value='';el('ia-status').innerHTML='<span style="color:var(--cinza)">Texto de exemplo carregado. Agora clique em “Extrair e preencher”.</span>';toast('Exemplo carregado');}
+async function extrairComIA(){
+  const status=el('ia-status');
+  const prov=config.provedor||'deepseek';
+  const conf=config[prov]||{};
+  const nome=prov==='deepseek'?'DeepSeek':'Anthropic';
+  if(!conf.apikey){status.innerHTML='<span style="color:var(--erro)">Informe a chave de API do '+nome+' na Configuração da IA (abaixo).</span>';return;}
+  const texto=el('ia-texto').value.trim();
+  const pdf=el('ia-pdf').files[0];
+  if(!texto&&!pdf){status.innerHTML='<span style="color:var(--erro)">Cole o texto ou anexe um PDF.</span>';return;}
+  el('btn-extrair').disabled=true;
+  status.innerHTML='<span class="spinner"></span> Lendo o documento...';
+  try{
+    let dados;
+    if(prov==='deepseek')dados=await extrairDeepSeek(conf,texto,pdf,status);
+    else dados=await extrairAnthropic(conf,texto,pdf,status);
+    aplicarDadosIA(dados);
+    status.innerHTML='<span style="color:var(--ok)">✔ Dados extraídos e preenchidos. Confira nas abas e ajuste o que for preciso.</span>';
+    toast('Formulários preenchidos pela IA');
+  }catch(e){
+    let msg=e.message||String(e);
+    if(/Failed to fetch|NetworkError/i.test(msg))msg='Falha de conexão (verifique a internet) ou bloqueio do navegador.';
+    status.innerHTML='<span style="color:var(--erro)">Erro: '+esc(msg)+'</span>';
+  }finally{el('btn-extrair').disabled=false;}
+}
+async function extrairDeepSeek(conf,texto,pdf,status){
+  let conteudo=texto;
+  if(!conteudo&&pdf){
+    status.innerHTML='<span class="spinner"></span> Lendo o PDF...';
+    conteudo=await extrairTextoPdf(pdf);
+    if(!conteudo)throw new Error('Não consegui extrair texto do PDF (pode ser digitalizado/imagem). Cole o texto manualmente.');
+  }
+  status.innerHTML='<span class="spinner"></span> Extraindo os dados com DeepSeek...';
+  const modelo=conf.modelo||'deepseek-chat';
+  const body={model:modelo,messages:[{role:'system',content:PROMPT_EXTRACAO_JSON},{role:'user',content:'DOCUMENTO:\n'+conteudo}],max_tokens:8000};
+  if(modelo!=='deepseek-reasoner'){body.response_format={type:'json_object'};body.temperature=0;}
+  const resp=await fetch('https://api.deepseek.com/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+conf.apikey},
+    body:JSON.stringify(body)
+  });
+  if(!resp.ok){const t=await resp.text();throw new Error('API '+resp.status+': '+t.slice(0,300));}
+  const d=await resp.json();
+  let c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||'';
+  c=c.replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,'').trim();
+  const ini=c.indexOf('{'),fim=c.lastIndexOf('}');
+  if(ini>=0&&fim>ini)c=c.slice(ini,fim+1);
+  try{return JSON.parse(c);}catch(e){throw new Error('Resposta não veio em JSON válido. Início: '+c.slice(0,200));}
+}
+async function extrairAnthropic(conf,texto,pdf,status){
+  status.innerHTML='<span class="spinner"></span> Extraindo os dados com Claude...';
+  const conteudo=[];
+  const instr='Leia o documento (contrato social ou alteração contratual) e extraia TODOS os dados pedidos pela ferramenta preencher_contrato. Use exatamente os valores do documento. Para quotas e capital, retorne apenas números (use vírgula decimal para o capital). Se um campo não constar, deixe vazio.';
+  if(!texto&&pdf){
+    const b64=await pdfParaBase64(pdf);
+    conteudo.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}});
+    conteudo.push({type:'text',text:instr});
+  }else{
+    conteudo.push({type:'text',text:instr+'\n\n=== DOCUMENTO ===\n'+texto});
+  }
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':conf.apikey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:conf.modelo||'claude-opus-4-8',max_tokens:4096,tools:[FERRAMENTA_EXTRACAO],tool_choice:{type:'tool',name:'preencher_contrato'},messages:[{role:'user',content:conteudo}]})
+  });
+  if(!resp.ok){const erro=await resp.text();throw new Error('API '+resp.status+': '+erro.slice(0,300));}
+  const dados=await resp.json();
+  const bloco=(dados.content||[]).find(b=>b.type==='tool_use');
+  if(!bloco)throw new Error('A IA não retornou dados estruturados.');
+  return bloco.input;
+}
+/* Leitor de PDF para o DeepSeek (texto puro). Carrega pdf.js sob demanda (precisa de internet). */
+let pdfjsCarregando=null;
+function carregarPdfJs(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  if(pdfjsCarregando)return pdfjsCarregando;
+  pdfjsCarregando=new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=()=>{try{window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';res(window.pdfjsLib);}catch(e){rej(e);}};
+    s.onerror=()=>rej(new Error('Não foi possível carregar o leitor de PDF (precisa de internet). Cole o texto.'));
+    document.head.appendChild(s);
+  });
+  return pdfjsCarregando;
+}
+async function extrairTextoPdf(file){
+  const lib=await carregarPdfJs();
+  const buf=await file.arrayBuffer();
+  const pdf=await lib.getDocument({data:buf}).promise;
+  let txt='';
+  for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const tc=await pg.getTextContent();txt+=tc.items.map(it=>it.str).join(' ')+'\n';}
+  return txt.trim();
+}
+function pdfParaBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>{const s=r.result;res(s.substring(s.indexOf(',')+1));};
+    r.onerror=rej;r.readAsDataURL(file);
+  });
+}
+function aplicarDadosIA(d){
+  d=d||{};
+  if(d.empresa)Object.keys(d.empresa).forEach(k=>{if(d.empresa[k])estado.empresa[k]=d.empresa[k];});
+  if(Array.isArray(d.socios)&&d.socios.length)estado.socios=d.socios.map(s=>Object.assign({},s));
+  if(d.capital){if(d.capital.valor)estado.capital.valor=d.capital.valor;if(d.capital.quotas)estado.capital.quotas=d.capital.quotas;}
+  if(Array.isArray(d.cnaes)&&d.cnaes.length){estado.alteracoes=estado.alteracoes||{};estado.alteracoes.cnae_incluir=d.cnaes.join('\n');}
+  gravar(CHAVE_ESTADO,estado);
+  preencherFormularios();
+}
+
+/* =========================================================================
+   NAVEGAÇÃO
+   ========================================================================= */
+const ABAS=[
+  ['modelos','Modelos','01'],['empresa','Empresa','02'],['socios','Sócios','03'],
+  ['quotas','Quotas','04'],['administracao','Administração','05'],['alteracoes','Alterações','06'],
+  ['foro','Foro','07'],['assinatura','Assinatura','08'],['gerar','Gerar','09'],
+  ['historico','Histórico','11'],['ia','IA ✨','']
+];
+function montarNav(){
+  const nav=el('nav-abas');nav.innerHTML='';
+  ABAS.forEach(([id,rot,num])=>{
+    const b=document.createElement('button');b.dataset.aba=id;
+    b.innerHTML=(num?`<span class="num">${num}</span>`:'')+rot;
+    b.onclick=()=>abrirAba(id);nav.appendChild(b);
+  });
+}
+function abrirAba(id){
+  coletarFormularios();
+  document.querySelectorAll('.secao').forEach(s=>s.classList.toggle('ativa',s.dataset.aba===id));
+  document.querySelectorAll('#nav-abas button').forEach(b=>b.classList.toggle('ativa',b.dataset.aba===id));
+  if(id==='quotas')montarTabelaQuotas();
+  if(id==='administracao')montarOpcoesAdmin();
+  if(id==='gerar')atualizarSeletorModelos();
+  if(id==='historico')montarHistorico();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* =========================================================================
+   MODELOS DE EXEMPLO
+   ========================================================================= */
+function inserirModelosExemplo(){
+  const constituicao=`**CONTRATO SOCIAL DE {{razao_social}}**
+
+{{#each socios}}{{qualificacao}}{{#unless @ultimo}};
+{{/unless}}{{/each}}.
+
+{{resolve}} constituir uma sociedade empresária {{natureza_juridica}}, que se regerá pelas cláusulas seguintes e pela legislação aplicável.
+
+**CLÁUSULA {{clausula}} — DA DENOMINAÇÃO E SEDE.** A sociedade girará sob a denominação de {{razao_social}}{{#if nome_fantasia}}, utilizando o nome fantasia {{nome_fantasia}}{{/if}}, com sede em {{endereco}}, {{cidade}}/{{estado}}, CEP {{cep}}.
+
+**CLÁUSULA {{clausula}} — DO OBJETO SOCIAL.** A sociedade tem por objeto: {{objeto_social}}.
+
+**CLÁUSULA {{clausula}} — DO CAPITAL SOCIAL.** O capital social é de {{capital_valor}} ({{capital_valor_extenso}}), totalmente subscrito, dividido em {{capital_quotas}} quotas no valor nominal de {{valor_quota}} cada uma, assim distribuídas entre {{os_socios}}:
+{{#each socios}}- {{nome}}: {{quotas}} quotas, no valor de {{valor}}, correspondentes a {{percentual}} do capital social.
+{{/each}}
+
+**CLÁUSULA {{clausula}} — DA RESPONSABILIDADE.** A responsabilidade {{do_socio}} é restrita ao valor de suas quotas, respondendo todos solidariamente pela integralização do capital social, nos termos do art. 1.052 do Código Civil.
+
+**CLÁUSULA {{clausula}} — DA ADMINISTRAÇÃO.** A administração da sociedade caberá a {{administrador}}, com poderes para representá-la ativa e passivamente, em juízo e fora dele, vedado o uso da denominação social em negócios estranhos ao objeto.
+
+**CLÁUSULA {{clausula}} — DO FORO.** Fica eleito o {{foro}} para dirimir as questões oriundas deste contrato.
+
+E, por estarem assim justos e contratados, {{assina}} o presente instrumento.
+
+{{local_data}}.
+
+{{#each socios}}
+_______________________________________
+{{nome}} — CPF {{cpf}}
+{{/each}}`;
+
+  const alteracao=`**ALTERAÇÃO DO CONTRATO SOCIAL DE {{razao_social}}**
+
+{{razao_social}}, sociedade empresária {{natureza_juridica}}, inscrita no CNPJ sob o nº {{cnpj}}{{#if nire}}, NIRE {{nire}}{{/if}}, com sede em {{endereco}}, {{cidade}}/{{estado}}, por {{os_socios}} que ao final {{assina}}, {{resolve}} alterar o seu contrato social mediante as cláusulas seguintes:
+
+{{#if alterou_razao_social}}**CLÁUSULA {{clausula}} — DA DENOMINAÇÃO.** A denominação social, antes {{rs_antiga}}, passa a ser {{rs_nova}}.
+
+{{/if}}{{#if alterou_nome_fantasia}}**CLÁUSULA {{clausula}} — DO NOME FANTASIA.** O nome fantasia, antes {{nf_antigo}}, passa a ser {{nf_novo}}.
+
+{{/if}}{{#if alterou_endereco}}**CLÁUSULA {{clausula}} — DA SEDE.** A sede social, antes em {{end_antigo}}, passa para {{end_novo}}.
+
+{{/if}}{{#if alterou_atividade}}**CLÁUSULA {{clausula}} — DO OBJETO SOCIAL.** O objeto social passa a ser: {{ativ_novo}}.
+
+{{/if}}{{#if incluiu_cnae}}**CLÁUSULA {{clausula}} — DA INCLUSÃO DE ATIVIDADES.** Ficam incluídas as seguintes atividades: {{cnae_incluir}}.
+
+{{/if}}{{#if excluiu_cnae}}**CLÁUSULA {{clausula}} — DA EXCLUSÃO DE ATIVIDADES.** Ficam excluídas as seguintes atividades: {{cnae_excluir}}.
+
+{{/if}}{{#if alterou_capital}}**CLÁUSULA {{clausula}} — DO CAPITAL SOCIAL.** O capital social, antes de {{cap_antigo}}, passa a ser de {{cap_novo}}.
+
+{{/if}}{{#if entrada_socio}}**CLÁUSULA {{clausula}} — DA ENTRADA DE SÓCIO.** Ingressa(m) na sociedade: {{socios_nomes}}.
+
+{{/if}}{{#if saida_socio}}**CLÁUSULA {{clausula}} — DA RETIRADA DE SÓCIO.** Retira-se da sociedade {{saida_nome}}, cujas quotas {{saida_destino}}.
+
+{{/if}}{{#if transferencia_quotas}}**CLÁUSULA {{clausula}} — DA CESSÃO DE QUOTAS.** {{transf_de}} cede e transfere {{transf_qtd}} quotas a {{transf_para}}.
+
+{{/if}}{{#if mudou_administracao}}**CLÁUSULA {{clausula}} — DA ADMINISTRAÇÃO.** A administração da sociedade passa a caber a {{administrador}}.
+
+{{/if}}{{#if transformacao}}**CLÁUSULA {{clausula}} — DA TRANSFORMAÇÃO.** A sociedade transforma-se de {{transf_nat_de}} para {{transf_nat_para}}.
+
+{{/if}}**CLÁUSULA {{clausula}} — DA RATIFICAÇÃO.** Permanecem inalteradas as demais cláusulas do contrato social{{#if consolidacao}}, que passa a vigorar consolidado com as alterações acima{{/if}}.
+
+{{local_data}}.
+
+{{#each socios}}
+_______________________________________
+{{nome}} — CPF {{cpf}}
+{{/each}}`;
+
+  const distrato=`**DISTRATO SOCIAL DE {{razao_social}}**
+
+{{#each socios}}{{qualificacao}}{{#unless @ultimo}};
+{{/unless}}{{/each}}, sócios da sociedade {{razao_social}}, inscrita no CNPJ sob o nº {{cnpj}}{{#if nire}}, NIRE {{nire}}{{/if}}, com sede em {{endereco}}, {{cidade}}/{{estado}}, {{resolve}} promover o DISTRATO da sociedade, mediante as cláusulas seguintes:
+
+**CLÁUSULA {{clausula}} — DA DISSOLUÇÃO.** Os sócios resolvem, de comum acordo, dissolver e extinguir a sociedade, cessando as suas atividades nesta data.
+
+**CLÁUSULA {{clausula}} — DO ATIVO E DO PASSIVO.** Verificado o balanço de encerramento, os sócios declaram inexistir ativo a partilhar e passivo a liquidar, assumindo cada qual a responsabilidade por eventuais obrigações supervenientes, na proporção de suas quotas.
+
+**CLÁUSULA {{clausula}} — DOS LIVROS E DOCUMENTOS.** A guarda dos livros, documentos e do acervo contábil ficará sob a responsabilidade de {{administrador}}, pelo prazo legal.
+
+**CLÁUSULA {{clausula}} — DO FORO.** Fica eleito o {{foro}} para dirimir as questões oriundas deste distrato.
+
+E, por estarem assim justos e acordados, {{assina}} o presente instrumento de distrato social.
+
+{{local_data}}.
+
+{{#each socios}}
+_______________________________________
+{{nome}} — CPF {{cpf}}
+{{/each}}`;
+
+  const consolidacao=`**CONTRATO SOCIAL CONSOLIDADO DE {{razao_social}}**
+
+{{#each socios}}{{qualificacao}}{{#unless @ultimo}};
+{{/unless}}{{/each}}, sócios da sociedade empresária {{natureza_juridica}} {{razao_social}}, inscrita no CNPJ sob o nº {{cnpj}}{{#if nire}}, NIRE {{nire}}{{/if}}, {{resolve}}, em razão das alterações havidas, CONSOLIDAR o contrato social, que passa a vigorar com a seguinte redação:
+
+**CLÁUSULA {{clausula}} — DA DENOMINAÇÃO E SEDE.** A sociedade gira sob a denominação de {{razao_social}}{{#if nome_fantasia}}, nome fantasia {{nome_fantasia}}{{/if}}, com sede em {{endereco}}, {{cidade}}/{{estado}}, CEP {{cep}}.
+
+**CLÁUSULA {{clausula}} — DO OBJETO SOCIAL.** A sociedade tem por objeto: {{objeto_social}}.
+
+**CLÁUSULA {{clausula}} — DO CAPITAL SOCIAL.** O capital social é de {{capital_valor}} ({{capital_valor_extenso}}), dividido em {{capital_quotas}} quotas no valor nominal de {{valor_quota}} cada, assim distribuídas:
+{{#each socios}}- {{nome}}: {{quotas}} quotas, no valor de {{valor}} ({{percentual}}).
+{{/each}}
+
+**CLÁUSULA {{clausula}} — DA ADMINISTRAÇÃO.** A administração da sociedade caberá a {{administrador}}.
+
+**CLÁUSULA {{clausula}} — DO FORO.** Fica eleito o {{foro}}.
+
+E, por estarem assim justos e contratados, {{assina}} o presente contrato social consolidado.
+
+{{local_data}}.
+
+{{#each socios}}
+_______________________________________
+{{nome}} — CPF {{cpf}}
+{{/each}}`;
+
+  const transformacao=`**ALTERAÇÃO CONTRATUAL — TRANSFORMAÇÃO DE {{razao_social}}**
+
+{{razao_social}}, inscrita no CNPJ sob o nº {{cnpj}}{{#if nire}}, NIRE {{nire}}{{/if}}, com sede em {{endereco}}, {{cidade}}/{{estado}}, por {{os_socios}} que ao final {{assina}}, {{resolve}} promover a TRANSFORMAÇÃO de sua natureza jurídica, mediante as cláusulas seguintes:
+
+**CLÁUSULA {{clausula}} — DA TRANSFORMAÇÃO.** A sociedade, nos termos do art. 1.113 do Código Civil e independentemente de dissolução ou liquidação, transforma-se{{#if transformacao}} de {{transf_nat_de}} para {{transf_nat_para}}{{/if}}{{#unless transformacao}} passando a adotar a natureza de {{natureza_juridica}}{{/unless}}, conservando todos os direitos e obrigações anteriores.
+
+**CLÁUSULA {{clausula}} — DO CAPITAL E DAS QUOTAS.** O capital social de {{capital_valor}} ({{capital_valor_extenso}}), dividido em {{capital_quotas}} quotas, permanece distribuído entre {{os_socios}}:
+{{#each socios}}- {{nome}}: {{quotas}} quotas ({{percentual}}).
+{{/each}}
+
+**CLÁUSULA {{clausula}} — DA ADMINISTRAÇÃO.** A administração caberá a {{administrador}}.
+
+**CLÁUSULA {{clausula}} — DA RATIFICAÇÃO.** Ficam ratificadas as demais cláusulas do contrato social.
+
+{{local_data}}.
+
+{{#each socios}}
+_______________________________________
+{{nome}} — CPF {{cpf}}
+{{/each}}`;
+
+  const procuracao=`**PROCURAÇÃO**
+
+OUTORGANTE: {{razao_social}}, sociedade empresária {{natureza_juridica}}, inscrita no CNPJ sob o nº {{cnpj}}, com sede em {{endereco}}, {{cidade}}/{{estado}}, neste ato representada por {{administrador}}.
+
+OUTORGADO(A): [NOME DO PROCURADOR], [nacionalidade], [estado civil], [profissão], inscrito(a) no CPF sob o nº [CPF], residente em [endereço completo].
+
+PODERES: pelo presente instrumento, a outorgante nomeia e constitui o(a) outorgado(a) sua bastante procuradora, conferindo-lhe os poderes da cláusula "ad judicia et extra" e, ainda, poderes especiais para [DESCREVER OS PODERES — ex.: representar a sociedade perante a Junta Comercial, Receita Federal, Prefeitura, bancos e demais órgãos, assinar contratos e requerimentos], podendo praticar todos os atos necessários ao fiel cumprimento deste mandato.
+
+{{local_data}}.
+
+_______________________________________
+{{razao_social}}
+{{administrador}}`;
+
+  const exemplos=[
+    ['Constituição (exemplo)','Constituição',constituicao],
+    ['Alteração contratual (exemplo)','Alteração Contratual',alteracao],
+    ['Distrato Social (exemplo)','Distrato Social',distrato],
+    ['Consolidação Contratual (exemplo)','Consolidação',consolidacao],
+    ['Transformação (exemplo)','Transformação Empresarial',transformacao],
+    ['Procuração (exemplo)','Outros',procuracao]
+  ];
+  let add=0,upd=0;
+  exemplos.forEach((ex,i)=>{
+    const existente=modelos.find(m=>m.nome===ex[0]);
+    if(existente){if(existente.corpo!==ex[2]||existente.tipo!==ex[1]){existente.corpo=ex[2];existente.tipo=ex[1];upd++;}}
+    else{modelos.push({id:'m'+(Date.now()+i),nome:ex[0],tipo:ex[1],corpo:ex[2]});add++;}
+  });
+  gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();
+  toast('Modelos de exemplo — '+add+' adicionados, '+upd+' atualizados');
+}
+
+/* =========================================================================
+   AUTOTESTE  (?teste=1)
+   ========================================================================= */
+function autoteste(){
+  let total=0,ok=0,linhas=[];
+  function v(desc,cond){total++;if(cond){ok++;linhas.push('  [OK]     '+desc);}else linhas.push('  [FALHOU] '+desc);}
+
+  linhas.push('— Número por extenso —');
+  v('1 → um real',numeroPorExtenso(1)==='um real');
+  v('2 → dois reais',numeroPorExtenso(2)==='dois reais');
+  v('100 → cem reais',numeroPorExtenso(100)==='cem reais');
+  v('101 → cento e um reais',numeroPorExtenso(101)==='cento e um reais');
+  v('1000 → mil reais',numeroPorExtenso(1000)==='mil reais');
+  v('2000 → dois mil reais',numeroPorExtenso(2000)==='dois mil reais');
+  v('10000 → dez mil reais',numeroPorExtenso(10000)==='dez mil reais');
+  v('1500 → mil e quinhentos reais',numeroPorExtenso(1500)==='mil e quinhentos reais');
+  v('1000000 → um milhão de? (sem "de") → "um milhão reais"',/^um milhão/.test(numeroPorExtenso(1000000)));
+  v('1,50 → um real e cinquenta centavos',numeroPorExtenso(1.5)==='um real e cinquenta centavos');
+  v('0 → zero reais',numeroPorExtenso(0)==='zero reais');
+  v('21 → vinte e um (em 21 reais)',numeroPorExtenso(21)==='vinte e um reais');
+
+  linhas.push('— Data por extenso —');
+  v('2026-06-22 → 22 de junho de 2026',dataPorExtenso('2026-06-22')==='22 de junho de 2026');
+  v('2026-01-01 → 1 de janeiro de 2026',dataPorExtenso('2026-01-01')==='1 de janeiro de 2026');
+  v('vazio → string vazia',dataPorExtenso('')==='');
+
+  linhas.push('— Template: variáveis —');
+  v('{{nome}}',renderTemplate('Olá {{nome}}',{nome:'Ana'})==='Olá Ana');
+  v('escapa HTML',renderTemplate('{{x}}',{x:'<b>'})==='&lt;b&gt;');
+  v('caminho a.b',renderTemplate('{{a.b}}',{a:{b:'ok'}})==='ok');
+  v('var inexistente vira vazio',renderTemplate('[{{z}}]',{})==='[]');
+
+  linhas.push('— Template: condicionais —');
+  v('#if verdadeiro',renderTemplate('{{#if f}}sim{{/if}}',{f:true})==='sim');
+  v('#if falso',renderTemplate('{{#if f}}sim{{/if}}',{f:false})==='');
+  v('#unless',renderTemplate('{{#unless f}}não{{/unless}}',{f:false})==='não');
+  v('#if string vazia = falso',renderTemplate('{{#if f}}x{{/if}}',{f:''})==='');
+
+  linhas.push('— Template: loops —');
+  v('#each básico',renderTemplate('{{#each l}}{{nome}};{{/each}}',{l:[{nome:'A'},{nome:'B'}]})==='A;B;');
+  v('#each índice',renderTemplate('{{#each l}}{{@numero}}{{/each}}',{l:[{},{}]})==='12');
+  v('#each @ultimo',renderTemplate('{{#each l}}{{nome}}{{#unless @ultimo}}, {{/unless}}{{/each}}',{l:[{nome:'A'},{nome:'B'},{nome:'C'}]})==='A, B, C');
+  v('#each com #if interno',renderTemplate('{{#each l}}{{#if ok}}+{{/if}}{{/each}}',{l:[{ok:true},{ok:false},{ok:true}]})==='++');
+  v('#each aninhado',renderTemplate('{{#each a}}[{{#each itens}}{{valor}}{{/each}}]{{/each}}',{a:[{itens:[1,2]},{itens:[3]}]})==='[12][3]');
+
+  linhas.push('— detectarVariaveis —');
+  const dv=detectarVariaveis('{{a}} {{#each socios}}{{nome}}{{/each}} {{#if x}}{{b}}{{/if}}');
+  v('detecta a,socios,nome,x,b',['a','socios','nome','x','b'].every(k=>dv.includes(k)));
+  v('ignora @',!detectarVariaveis('{{#each l}}{{@index}}{{/each}}').includes('@index'));
+
+  linhas.push('— Quotas / contexto —');
+  estado=estadoVazio();
+  estado.empresa.razao_social='Teste LTDA';estado.empresa.natureza_juridica='LTDA';
+  estado.socios=[{nome:'Ana',cpf:'111',quotas:'6000'},{nome:'Bia',cpf:'222',quotas:'4000'}];
+  estado.capital={valor:'10.000,00',quotas:'10000'};
+  estado.administracao={tipo:'todos',terceiro:{}};
+  const ctx=montarContexto();
+  v('valor da quota = R$ 1,00',ctx.valor_quota==='R$ 1,00');
+  v('Ana 60%',ctx.socios[0].percentual==='60%');
+  v('Bia 40%',ctx.socios[1].percentual==='40%');
+  v('Ana valor R$ 6.000,00',ctx.socios[0].valor==='R$ 6.000,00');
+  v('capital extenso = dez mil reais',ctx.capital_valor_extenso==='dez mil reais');
+  v('tem vários sócios',ctx.tem_varios_socios===true);
+  v('socios_nomes com "e"',ctx.socios_nomes==='Ana e Bia');
+  v('administrador = todos os sócios',ctx.administrador==='todos os sócios');
+  estado.administracao={tipo:'socio_0',terceiro:{}};
+  v('administrador = Ana',montarContexto().administrador==='Ana');
+
+  linhas.push('— Geração integrada —');
+  estado.administracao={tipo:'todos',terceiro:{}};
+  estado.foro={comarca:'Rio Claro',cidade:'Rio Claro',uf:'SP'};
+  estado.assinatura={cidade:'Rio Claro',data:'2026-06-22',uf:'SP'};
+  const c2=montarContexto();
+  v('foro montado',c2.foro==='Foro da Comarca de Rio Claro/SP');
+  v('local_data montado',c2.local_data==='Rio Claro/SP, 22 de junho de 2026');
+  const corpo='Capital {{capital_valor}}. Sócios: {{#each socios}}{{nome}} ({{percentual}}){{#unless @ultimo}}, {{/unless}}{{/each}}. {{foro}}.';
+  const ger=renderTemplate(corpo,c2);
+  v('render integrado correto',ger==='Capital R$ 10.000,00. Sócios: Ana (60%), Bia (40%). Foro da Comarca de Rio Claro/SP.');
+
+  linhas.push('— Concordância de gênero / qualificação —');
+  v('gênero f por estado civil',generoSocio({nome:'Maria',estado_civil:'Casada'})==='f');
+  v('gênero m por estado civil',generoSocio({nome:'João',estado_civil:'Solteiro'})==='m');
+  v('gênero f por nome (fallback)',generoSocio({nome:'Ana Lima'})==='f');
+  v('gênero m por nome (fallback)',generoSocio({nome:'Carlos Lima'})==='m');
+  v('conc masculino',conc('m','inscrito','inscrita')==='inscrito');
+  v('conc feminino',conc('f','portador','portadora')==='portadora');
+  v('conc desconhecido vira (a)',conc('?','inscrito','inscrita')==='inscrito(a)');
+  v('qualificação usa feminino',/inscrita no CPF/.test(qualificarSocio({nome:'Maria Souza',estado_civil:'casada',cpf:'1'})));
+  v('regime de bens só p/ casado',/regime de/.test(qualificarSocio({nome:'M',estado_civil:'casada',regime_bens:'comunhão parcial'}))&&!/regime de/.test(qualificarSocio({nome:'A',estado_civil:'solteira',regime_bens:'comunhão parcial'})));
+
+  linhas.push('— Ordinais de cláusula (feminino) —');
+  v('1 → primeira',ordinalExtensoFem(1)==='primeira');
+  v('3 → terceira',ordinalExtensoFem(3)==='terceira');
+  v('10 → décima',ordinalExtensoFem(10)==='décima');
+  v('11 → décima primeira',ordinalExtensoFem(11)==='décima primeira');
+  v('21 → vigésima primeira',ordinalExtensoFem(21)==='vigésima primeira');
+
+  linhas.push('— Numeração automática de cláusulas —');
+  v('clausula numera em sequência',renderTemplate('{{clausula}}|{{clausula}}|{{clausula}}',{})==='PRIMEIRA|SEGUNDA|TERCEIRA');
+  v('clausula conta só as renderizadas',renderTemplate('{{clausula}}{{#if x}}{{clausula}}{{/if}}{{clausula}}',{x:false})==='PRIMEIRASEGUNDA');
+
+  linhas.push('— Singular/plural de verbos —');
+  estado=estadoVazio();estado.socios=[{nome:'A',cpf:'1'}];const cu1=montarContexto();
+  v('1 sócio → resolve/assina/o sócio',cu1.resolve==='resolve'&&cu1.assina==='assina'&&cu1.os_socios==='o sócio');
+  estado.socios=[{nome:'A',cpf:'1'},{nome:'B',cpf:'2'}];const cu2=montarContexto();
+  v('2 sócios → resolvem/assinam/os sócios',cu2.resolve==='resolvem'&&cu2.assina==='assinam'&&cu2.os_socios==='os sócios');
+
+  linhas.push('— Máscaras (CPF/CNPJ/CEP) —');
+  v('CPF formatado',formatarMascara('cpf','12345678900')==='123.456.789-00');
+  v('CNPJ formatado',formatarMascara('cnpj','12345678000190')==='12.345.678/0001-90');
+  v('CEP formatado',formatarMascara('cep','13500000')==='13500-000');
+
+  estado=estadoVazio();
+  const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
+  el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
+  el('autoteste').style.display='block';
+  el('app').style.display='none';el('nav-abas').style.display='none';
+}
+
+/* =========================================================================
+   INICIALIZAÇÃO
+   ========================================================================= */
+function init(){
+  montarNav();
+  montarConfigIA();
+  preencherFormularios();
+  if(!modelos.length)inserirModelosExemplo();else{montarListaModelos();atualizarSeletorModelos();}
+  abrirAba('modelos');
+  if(/[?&]teste=1/.test(location.search))autoteste();
+}
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
