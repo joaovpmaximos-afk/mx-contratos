@@ -28,6 +28,12 @@ Na aba **Preencher com IA**: cole o texto de um contrato antigo **ou** anexe o P
 - **PDF:** o Claude lê PDF direto; o DeepSeek lê só texto, então o PDF é convertido em texto no próprio navegador (precisa de internet; PDF digitalizado/imagem não é lido — nesse caso, cole o texto).
 - A extração tem custo por documento (centavos).
 
+### Documentos pessoais (RG, CNH, CPF, comprovante de endereço)
+Na mesma aba, o bloco **Ler documentos pessoais**: escolha qual sócio preencher, anexe as fotos ou PDFs dos documentos dele e clique em *Ler documentos e preencher sócio*.
+- **Fotos** usam o Claude Haiku — precisa da chave Anthropic (para guardá-la: em *Configuração da IA*, troque o Provedor para "Claude (Anthropic)", cole a chave e pode voltar para DeepSeek; a chave fica guardada). Custo: fração de centavo por documento.
+- **PDFs com texto** (ex.: comprovante baixado do site da concessionária) funcionam também só com o DeepSeek.
+- O endereço é lido do comprovante; depois **confira os dados na aba Sócios** (estado civil/profissão nem sempre constam nos documentos).
+
 ## Recursos de apoio
 - **Máscaras automáticas** em CPF, CNPJ, CEP e telefone (formatação enquanto digita).
 - **Endereço pelo CEP**: ao digitar o CEP (da empresa ou de um sócio) e sair do campo, endereço/bairro/cidade/UF são preenchidos sozinhos (ViaCEP — precisa de internet; CEP "geral" de cidade pode não retornar rua).
@@ -37,7 +43,7 @@ Na aba **Preencher com IA**: cole o texto de um contrato antigo **ou** anexe o P
 Tudo (formulários, modelos, histórico, chave) é salvo no **armazenamento do próprio navegador** deste computador. Não vai para nenhum servidor. Trocar de navegador ou limpar os dados do navegador apaga as informações.
 
 ## Verificação automática
-Abra **`index.html?teste=1`** para rodar o autoteste interno (63 verificações: cálculo de quotas, valor/data por extenso, motor de template, concordância de gênero, numeração de cláusulas e máscaras). Deve mostrar "63/63 verificações OK".
+Abra **`index.html?teste=1`** para rodar o autoteste interno (70 verificações: cálculo de quotas, valor/data por extenso, motor de template, concordância de gênero, numeração de cláusulas e máscaras). Deve mostrar "70/70 verificações OK".
 
 ---
 MAXIMOS Soluções Empresariais · arquivo único, sem instalação.

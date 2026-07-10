@@ -128,6 +128,7 @@
     body{background:#fff}
     main{margin:0;max-width:none;padding:0}
     .secao{display:none !important}
+    section[data-aba="gerar"]{display:block !important}
     .card{border:none;box-shadow:none;padding:0;margin:0}
     .card h2,.card .desc,.avisos{display:none}
     #preview{border:none;padding:0}
@@ -270,7 +271,7 @@
 
   <!-- 09/10 GERAR -->
   <section class="secao" data-aba="gerar">
-    <div class="card">
+    <div class="card no-print">
       <h2>Gerar contrato <span class="tag">Módulos 9 e 10</span></h2>
       <p class="desc">Selecione o modelo, valide e gere. A IA substitui os marcadores, monta as cláusulas das alterações marcadas e ajusta singular/plural conforme o nº de sócios.</p>
       <div class="grade">
@@ -321,6 +322,18 @@
         <button class="btn contorno" onclick="carregarExemploIA()">📄 Carregar texto de exemplo (teste)</button>
       </div>
       <div class="ia-status" id="ia-status"></div>
+    </div>
+    <div class="card">
+      <h2>Ler documentos pessoais <span class="tag">RG · CNH · CPF · comprovante</span></h2>
+      <p class="desc">Anexe fotos ou PDFs dos documentos de <b>um sócio</b> (RG, CNH, CPF, comprovante de endereço) e o sistema preenche o cadastro dele automaticamente. <b>Fotos</b> usam o Claude Haiku (precisa da chave Anthropic — custo de fração de centavo por documento); <b>PDFs com texto</b> funcionam também só com o DeepSeek.</p>
+      <div class="grade">
+        <div class="campo c4"><label>Preencher qual sócio?</label><select id="sel-doc-socio"></select></div>
+        <div class="campo c8"><label>Documentos (pode selecionar vários)</label><input type="file" id="doc-arquivos" multiple accept="image/*,application/pdf"></div>
+      </div>
+      <div class="barra-acoes">
+        <button class="btn primario" id="btn-docs" onclick="lerDocumentosSocio()">🪪 Ler documentos e preencher sócio</button>
+      </div>
+      <div class="ia-status" id="doc-status"></div>
     </div>
     <div class="card">
       <h2>Configuração da IA</h2>
@@ -435,7 +448,9 @@ function moeda(n){return 'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDig
 function numeroPorExtenso(valor){
   valor=Math.round((Number(valor)||0)*100)/100;
   const reais=Math.floor(valor);const centavos=Math.round((valor-reais)*100);
-  let txt=extensoInteiro(reais)+' '+(reais===1?'real':'reais');
+  let txt=extensoInteiro(reais);
+  if(reais>0&&reais%1000000===0)txt+=' de'; // "um milhão DE reais", "dois bilhões DE reais"
+  txt+=' '+(reais===1?'real':'reais');
   if(centavos>0)txt+=' e '+extensoInteiro(centavos)+' '+(centavos===1?'centavo':'centavos');
   return txt;
 }
@@ -456,23 +471,26 @@ function extensoInteiro(n){
     }
     return p.join(' e ');
   }
-  const grupos=[];let resto=n,i=0;
-  while(resto>0){grupos.push(resto%1000);resto=Math.floor(resto/1000);i++;}
-  const nomes=[['',''],['mil','mil'],['milhão','milhões'],['bilhão','bilhões']];
-  let partes=[];
+  const nomes=[null,null,['milhão','milhões'],['bilhão','bilhões']];
+  const grupos=[];let resto=n;
+  while(resto>0){grupos.push(resto%1000);resto=Math.floor(resto/1000);}
+  const partes=[]; // da maior ordem para a menor: {txt,val}
   for(let g=grupos.length-1;g>=0;g--){
     const val=grupos[g];if(val===0)continue;
-    if(g===1){partes.push((val===1?'mil':ate999(val)+' mil'));}
-    else if(g>=2){partes.push(ate999(val)+' '+(val===1?nomes[g][0]:nomes[g][1]));}
-    else partes.push(ate999(val));
+    let txt;
+    if(g===1)txt=(val===1?'mil':ate999(val)+' mil');
+    else if(g>=2)txt=ate999(val)+' '+(val===1?nomes[g][0]:nomes[g][1]);
+    else txt=ate999(val);
+    partes.push({txt:txt,val:val});
   }
-  // junção com vírgula/e
+  // norma: "e" antes do último grupo só quando ele é <100 ou centena exata
   let out='';
-  for(let k=0;k<partes.length;k++){
-    if(k===0)out=partes[k];
-    else if(k===partes.length-1)out+=(partes[k].match(/^(cento|duzentos|trezentos|quatrocentos|quinhentos|seiscentos|setecentos|oitocentos|novecentos)/)||/mil$/.test(partes[k])?' e ':' e ')+partes[k];
-    else out+=', '+partes[k];
-  }
+  partes.forEach((p,k)=>{
+    if(k===0){out=p.txt;return;}
+    const ultimo=k===partes.length-1;
+    const liga=ultimo&&(p.val<100||p.val%100===0);
+    out+=(liga?' e ':' ')+p.txt;
+  });
   return out;
 }
 const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
@@ -557,7 +575,7 @@ function montarContexto(){
     const q=inteiro(s.quotas);
     return Object.assign({},s,{
       indice:i+1,
-      quotas:q||'',
+      quotas:q?q.toLocaleString('pt-BR'):'',
       quotas_num:q,
       valor:q&&valorQuota?moeda(q*valorQuota):'',
       percentual: q&&totQ? ((q/totQ*100).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%') :'',
@@ -579,7 +597,7 @@ function montarContexto(){
   // capital
   ctx.capital_valor=moeda(capVal);
   ctx.capital_valor_extenso=capVal?numeroPorExtenso(capVal):'';
-  ctx.capital_quotas=totQ||'';
+  ctx.capital_quotas=totQ?totQ.toLocaleString('pt-BR'):'';
   ctx.valor_quota=valorQuota?moeda(valorQuota):'';
   // administração
   ctx.administrador=descreverAdministrador(socios);
@@ -1148,6 +1166,163 @@ async function extrairAnthropic(conf,texto,pdf,status){
   if(!bloco)throw new Error('A IA não retornou dados estruturados.');
   return bloco.input;
 }
+
+/* ---- Leitura de documentos pessoais (RG/CNH/CPF/comprovante) → preenche o sócio ---- */
+const FERRAMENTA_SOCIO={
+  name:'preencher_socio',
+  description:'Preenche os dados de uma pessoa física extraídos de documentos brasileiros (RG, CNH, CPF, comprovante de endereço).',
+  input_schema:{type:'object',properties:{
+    nome:{type:'string'},
+    cpf:{type:'string',description:'formato 000.000.000-00'},
+    rg:{type:'string',description:'número do RG / documento de identidade'},
+    orgao_emissor:{type:'string',description:'órgão emissor e UF, ex.: SSP/SP'},
+    data_nascimento:{type:'string',description:'dd/mm/aaaa'},
+    nacionalidade:{type:'string'},estado_civil:{type:'string'},profissao:{type:'string'},
+    cnh:{type:'string',description:'número de registro da CNH, se houver'},
+    endereco:{type:'string',description:'logradouro e número (do comprovante de endereço)'},
+    cep:{type:'string',description:'formato 00000-000'},bairro:{type:'string'},cidade:{type:'string'},
+    estado:{type:'string',description:'UF'}
+  },required:['nome']}
+};
+const INSTR_DOCS='Analise os documentos pessoais anexados (podem ser RG, CNH, CPF e/ou comprovante de endereço de UMA mesma pessoa) e extraia os dados para a ferramenta preencher_socio. O endereço deve vir do comprovante de endereço. Datas em dd/mm/aaaa, CPF como 000.000.000-00, CEP como 00000-000. Se um campo não constar em nenhum documento, deixe vazio.';
+const PROMPT_SOCIO_JSON=`Você extrai dados de documentos pessoais brasileiros (RG, CNH, CPF, comprovante de endereço) de UMA mesma pessoa. Responda APENAS com um objeto JSON válido, exatamente nesta estrutura:
+{"nome":"","cpf":"","rg":"","orgao_emissor":"","data_nascimento":"","nacionalidade":"","estado_civil":"","profissao":"","cnh":"","endereco":"","cep":"","bairro":"","cidade":"","estado":""}
+Regras: o endereço vem do comprovante de endereço; datas dd/mm/aaaa; CPF como 000.000.000-00; CEP como 00000-000; campos ausentes como string vazia.`;
+
+function montarSelDocSocio(){
+  const s=el('sel-doc-socio');if(!s)return;
+  s.innerHTML='';
+  estado.socios.forEach((so,i)=>{
+    const o=document.createElement('option');o.value=String(i);
+    o.textContent='Sócio '+(i+1)+(so&&so.nome?' — '+so.nome:'');
+    s.appendChild(o);
+  });
+  const nov=document.createElement('option');nov.value='novo';nov.textContent='➕ Criar novo sócio';
+  s.appendChild(nov);
+  const vazio=estado.socios.findIndex(so=>!so||!so.nome);
+  s.value=vazio>=0?String(vazio):'novo';
+}
+async function lerDocumentosSocio(){
+  const status=el('doc-status');
+  const files=Array.prototype.slice.call(el('doc-arquivos').files);
+  if(!files.length){status.innerHTML='<span style="color:var(--erro)">Anexe pelo menos um documento (foto ou PDF).</span>';return;}
+  const imgs=files.filter(f=>/^image\//.test(f.type));
+  const pdfs=files.filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name));
+  const chaveClaude=(config.anthropic&&config.anthropic.apikey)||'';
+  const chaveDS=(config.deepseek&&config.deepseek.apikey)||'';
+  el('btn-docs').disabled=true;
+  try{
+    let dados;
+    if(chaveClaude){
+      status.innerHTML='<span class="spinner"></span> Lendo os documentos com Claude...';
+      dados=await lerDocsClaude(chaveClaude,imgs,pdfs);
+    }else if(imgs.length){
+      throw new Error('Fotos exigem a chave do Claude (Anthropic). Na Configuração da IA abaixo, troque o Provedor para "Claude (Anthropic)", cole a chave (console.anthropic.com) e, se quiser, volte para DeepSeek — a chave fica guardada. Alternativa: anexe os documentos em PDF com texto.');
+    }else if(pdfs.length&&chaveDS){
+      status.innerHTML='<span class="spinner"></span> Lendo os PDFs...';
+      let txt='';
+      for(const f of pdfs){const t=await extrairTextoPdf(f);if(t)txt+='\n===== DOCUMENTO: '+f.name+' =====\n'+t;}
+      if(!txt.trim())throw new Error('Não consegui extrair texto dos PDFs (podem ser digitalizados/imagem). Nesse caso use a chave do Claude para leitura por foto.');
+      status.innerHTML='<span class="spinner"></span> Extraindo os dados com DeepSeek...';
+      dados=await lerDocsDeepSeekTexto(txt);
+    }else{
+      throw new Error('Configure uma chave de IA na Configuração abaixo.');
+    }
+    const alvo=aplicarDadosSocio(dados);
+    status.innerHTML='<span style="color:var(--ok)">✔ Documentos lidos. Dados aplicados ao Sócio '+(alvo+1)+' — confira na aba Sócios (endereço, estado civil e profissão podem precisar de complemento).</span>';
+    toast('Sócio '+(alvo+1)+' preenchido pelos documentos');
+  }catch(e){
+    let msg=e.message||String(e);
+    if(/Failed to fetch|NetworkError/i.test(msg))msg='Falha de conexão (verifique a internet).';
+    status.innerHTML='<span style="color:var(--erro)">Erro: '+esc(msg)+'</span>';
+  }finally{el('btn-docs').disabled=false;}
+}
+async function lerDocsClaude(chave,imgs,pdfs){
+  const conteudo=[];
+  for(const f of imgs){
+    let b64;
+    try{b64=await redimensionarImagem(f);}
+    catch(e){throw new Error('Não consegui ler a imagem "'+f.name+'" ('+(e.message||'formato não suportado')+'). Use JPG/PNG ou PDF.');}
+    conteudo.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}});
+  }
+  for(const f of pdfs){
+    const b64=await pdfParaBase64(f);
+    conteudo.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}});
+  }
+  conteudo.push({type:'text',text:INSTR_DOCS});
+  const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':chave,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:'claude-haiku-4-5', // leitura de documentos: modelo barato dá conta e custa fração de centavo
+      max_tokens:2000,
+      tools:[FERRAMENTA_SOCIO],
+      tool_choice:{type:'tool',name:'preencher_socio'},
+      messages:[{role:'user',content:conteudo}]
+    })
+  });
+  if(!resp.ok){const t=await resp.text();throw new Error('API '+resp.status+': '+t.slice(0,300));}
+  const d=await resp.json();
+  const bloco=(d.content||[]).find(b=>b.type==='tool_use');
+  if(!bloco)throw new Error('A IA não retornou dados estruturados.');
+  return bloco.input;
+}
+async function lerDocsDeepSeekTexto(txt){
+  const conf=config.deepseek||{};
+  const modelo=conf.modelo||'deepseek-chat';
+  const body={model:modelo,messages:[{role:'system',content:PROMPT_SOCIO_JSON},{role:'user',content:'DOCUMENTOS:\n'+txt}],max_tokens:2000};
+  if(modelo!=='deepseek-reasoner'){body.response_format={type:'json_object'};body.temperature=0;}
+  const resp=await fetch('https://api.deepseek.com/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+conf.apikey},
+    body:JSON.stringify(body)
+  });
+  if(!resp.ok){const t=await resp.text();throw new Error('API '+resp.status+': '+t.slice(0,300));}
+  const d=await resp.json();
+  let c=(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||'';
+  c=c.replace(/^\s*```(?:json)?/i,'').replace(/```\s*$/,'').trim();
+  const ini=c.indexOf('{'),fim=c.lastIndexOf('}');
+  if(ini>=0&&fim>ini)c=c.slice(ini,fim+1);
+  try{return JSON.parse(c);}catch(e){throw new Error('Resposta não veio em JSON válido.');}
+}
+/* Reduz a foto p/ máx. 1568px e re-encoda em JPEG (menos tokens, aceita fotos grandes de celular). */
+function redimensionarImagem(file){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const MAX=1568;
+        let w=img.naturalWidth,h=img.naturalHeight;
+        if(!w||!h)throw new Error('imagem vazia');
+        const f=Math.min(1,MAX/Math.max(w,h));
+        w=Math.max(1,Math.round(w*f));h=Math.max(1,Math.round(h*f));
+        const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        const durl=cv.toDataURL('image/jpeg',0.88);
+        URL.revokeObjectURL(url);
+        res(durl.substring(durl.indexOf(',')+1));
+      }catch(e){URL.revokeObjectURL(url);rej(e);}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('formato não suportado pelo navegador'));};
+    img.src=url;
+  });
+}
+function aplicarDadosSocio(d){
+  d=d||{};
+  let alvo=el('sel-doc-socio').value;
+  if(alvo==='novo'){estado.socios.push({});alvo=estado.socios.length-1;}
+  else{alvo=parseInt(alvo,10);if(isNaN(alvo)||alvo<0||alvo>=estado.socios.length)alvo=0;}
+  if(!estado.socios[alvo])estado.socios[alvo]={};
+  ['nome','cpf','rg','orgao_emissor','data_nascimento','nacionalidade','estado_civil','profissao','cnh','endereco','cep','bairro','cidade','estado'].forEach(k=>{
+    if(d[k])estado.socios[alvo][k]=String(d[k]);
+  });
+  gravar(CHAVE_ESTADO,estado);
+  preencherFormularios();
+  montarSelDocSocio();
+  return alvo;
+}
+
 /* Leitor de PDF para o DeepSeek (texto puro). Carrega pdf.js sob demanda (precisa de internet). */
 let pdfjsCarregando=null;
 function carregarPdfJs(){
@@ -1212,6 +1387,7 @@ function abrirAba(id){
   if(id==='administracao')montarOpcoesAdmin();
   if(id==='gerar')atualizarSeletorModelos();
   if(id==='historico')montarHistorico();
+  if(id==='ia')montarSelDocSocio();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1403,7 +1579,12 @@ function autoteste(){
   v('2000 → dois mil reais',numeroPorExtenso(2000)==='dois mil reais');
   v('10000 → dez mil reais',numeroPorExtenso(10000)==='dez mil reais');
   v('1500 → mil e quinhentos reais',numeroPorExtenso(1500)==='mil e quinhentos reais');
-  v('1000000 → um milhão de? (sem "de") → "um milhão reais"',/^um milhão/.test(numeroPorExtenso(1000000)));
+  v('1000000 → um milhão de reais',numeroPorExtenso(1000000)==='um milhão de reais');
+  v('2000000 → dois milhões de reais',numeroPorExtenso(2000000)==='dois milhões de reais');
+  v('1000001 → um milhão e um reais',numeroPorExtenso(1000001)==='um milhão e um reais');
+  v('12550 → doze mil quinhentos e cinquenta reais',numeroPorExtenso(12550)==='doze mil quinhentos e cinquenta reais');
+  v('2300 → dois mil e trezentos reais',numeroPorExtenso(2300)==='dois mil e trezentos reais');
+  v('1234567 → extenso completo',numeroPorExtenso(1234567)==='um milhão duzentos e trinta e quatro mil quinhentos e sessenta e sete reais');
   v('1,50 → um real e cinquenta centavos',numeroPorExtenso(1.5)==='um real e cinquenta centavos');
   v('0 → zero reais',numeroPorExtenso(0)==='zero reais');
   v('21 → vinte e um (em 21 reais)',numeroPorExtenso(21)==='vinte e um reais');
@@ -1448,6 +1629,8 @@ function autoteste(){
   v('Ana 60%',ctx.socios[0].percentual==='60%');
   v('Bia 40%',ctx.socios[1].percentual==='40%');
   v('Ana valor R$ 6.000,00',ctx.socios[0].valor==='R$ 6.000,00');
+  v('quotas do sócio com milhar (6.000)',ctx.socios[0].quotas==='6.000');
+  v('capital_quotas com milhar (10.000)',ctx.capital_quotas==='10.000');
   v('capital extenso = dez mil reais',ctx.capital_valor_extenso==='dez mil reais');
   v('tem vários sócios',ctx.tem_varios_socios===true);
   v('socios_nomes com "e"',ctx.socios_nomes==='Ana e Bia');
