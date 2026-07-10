@@ -155,6 +155,52 @@
 
 <main id="app">
 
+  <!-- GERAÇÃO RÁPIDA -->
+  <section class="secao" data-aba="rapido">
+    <div class="card">
+      <h2>Geração rápida <span class="tag">mínimo de digitação</span></h2>
+      <p class="desc">Informe só o essencial — o resto o sistema busca sozinho (Receita Federal pelo CNPJ, endereço pelo CEP) ou assume por padrão (quotas de R$ 1,00, foro e data da cidade da sede). Tudo pode ser ajustado depois nas outras abas.</p>
+      <div class="grade">
+        <div class="campo c6"><label>1 · Qual documento?</label><select id="rap-modelo"></select></div>
+        <div class="campo c6"><label>2 · Empresa</label>
+          <select id="rap-tipoemp" onchange="rapidoTipoEmpresa()">
+            <option value="existente">Já existe — buscar pelo CNPJ</option>
+            <option value="nova">Empresa nova (constituição)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grade" id="rap-existente" style="margin-top:10px">
+        <div class="campo c5"><label>CNPJ</label><input id="rap-cnpj" data-mask="cnpj" oninput="mascarar(this)" placeholder="00.000.000/0000-00"></div>
+        <div class="campo c7" style="justify-content:flex-end"><button class="btn contorno" onclick="rapidoBuscarCnpj()">🔎 Buscar na Receita Federal</button></div>
+        <div class="campo c12"><div class="ia-status" id="rap-cnpj-status"></div></div>
+      </div>
+      <div class="grade" id="rap-nova" style="display:none;margin-top:10px">
+        <div class="campo c8"><label>Razão social</label><input id="rap-razao" placeholder="EMPRESA EXEMPLO LTDA"></div>
+        <div class="campo c4"><label>Natureza jurídica</label><input id="rap-natureza" value="limitada"></div>
+        <div class="campo c12"><label>Atividade (vira o objeto social)</label><input id="rap-atividade" placeholder="fabricação e comércio varejista de pães, bolos e doces"></div>
+        <div class="campo c3"><label>CEP da sede</label><input id="rap-cep" data-mask="cep" oninput="mascarar(this)" onblur="rapidoCep(this)"></div>
+        <div class="campo c5"><label>Endereço (rua, nº)</label><input id="rap-endereco"></div>
+        <div class="campo c2"><label>Cidade</label><input id="rap-cidade"></div>
+        <div class="campo c2"><label>UF</label><input id="rap-uf" maxlength="2"></div>
+      </div>
+      <div style="margin-top:16px">
+        <label style="font-size:12px;font-weight:600;color:var(--cinza)">3 · Sócios e participação (%)</label>
+        <table class="quotas" id="rap-socios"><thead><tr><th>Nome</th><th style="width:170px">CPF</th><th style="width:90px">%</th><th style="width:50px"></th></tr></thead><tbody></tbody></table>
+        <div class="barra-acoes" style="margin-top:8px">
+          <button class="btn contorno" onclick="rapidoAddSocio()">＋ Sócio</button>
+          <button class="btn contorno" onclick="rapidoIgualar()">÷ Dividir igualmente</button>
+        </div>
+        <div class="dica">Dica: para preencher um sócio pelos documentos (RG/CNH/comprovante), use a aba <b>IA ✨</b> depois de gerar.</div>
+      </div>
+      <div class="grade" style="margin-top:16px">
+        <div class="campo c4"><label>4 · Capital social (R$)</label><input id="rap-capital" inputmode="decimal" placeholder="10.000,00"></div>
+        <div class="campo c4"><label>5 · Quem administra?</label><select id="rap-admin"></select></div>
+        <div class="campo c4" style="justify-content:flex-end"><button class="btn primario grande" style="width:100%" onclick="aplicarRapido()">⚡ Gerar contrato</button></div>
+      </div>
+      <ul class="avisos" id="rap-avisos"></ul>
+    </div>
+  </section>
+
   <!-- 01 MODELOS -->
   <section class="secao" data-aba="modelos">
     <div class="card">
@@ -176,6 +222,7 @@
       <h2>Dados da empresa <span class="tag">Módulo 2</span></h2>
       <p class="desc">Informações da sociedade. Esses dados alimentam os marcadores <code>{{razao_social}}</code>, <code>{{cnpj}}</code>, etc. CPF/CNPJ/CEP têm máscara automática; ao digitar o CEP, o endereço é buscado sozinho.</p>
       <div class="barra-acoes" style="margin-bottom:16px">
+        <button class="btn contorno" onclick="empresaBuscarCnpj()">🔎 Preencher pela Receita (CNPJ)</button>
         <button class="btn contorno" onclick="exportarDados()">⬇ Exportar dados (backup)</button>
         <button class="btn contorno" onclick="document.getElementById('imp-dados').click()">⬆ Importar dados</button>
         <input type="file" id="imp-dados" accept="application/json,.json" style="display:none" onchange="importarDados(event)">
@@ -879,6 +926,189 @@ function limparTudo(){
 }
 
 /* =========================================================================
+   CONSULTA CNPJ (BrasilAPI) + GERAÇÃO RÁPIDA
+   ========================================================================= */
+function dataHojeISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* Divide um total de quotas conforme percentuais, fechando exatamente o total (maiores frações levam a sobra). */
+function distribuirQuotas(total,pcts){
+  total=Math.max(0,Math.round(Number(total)||0));
+  const nums=(pcts||[]).map(p=>Math.max(0,Number(p)||0));
+  const soma=nums.reduce((a,b)=>a+b,0);
+  if(!total||!nums.length||soma<=0)return nums.map(()=>0);
+  const brutos=nums.map(p=>total*p/soma);
+  const base=brutos.map(Math.floor);
+  let falta=total-base.reduce((a,b)=>a+b,0);
+  const ordem=brutos.map((b,i)=>({i:i,resto:b-Math.floor(b)})).sort((a,b)=>b.resto-a.resto);
+  for(let k=0;k<ordem.length&&falta>0;k++,falta--)base[ordem[k].i]++;
+  return base;
+}
+function mapearDadosCnpj(d){
+  d=d||{};const emp={};
+  emp.razao_social=d.razao_social||'';
+  emp.nome_fantasia=d.nome_fantasia||'';
+  emp.cnpj=d.cnpj?formatarMascara('cnpj',String(d.cnpj)):'';
+  emp.natureza_juridica=String(d.natureza_juridica||'').replace(/^\s*\d[\d.\-\/]*\s*-\s*/,'');
+  emp.endereco=([d.logradouro,d.numero].filter(Boolean).join(', ')+(d.complemento?' '+String(d.complemento).trim():'')).trim();
+  emp.cep=d.cep?formatarMascara('cep',String(d.cep)):'';
+  emp.bairro=d.bairro||'';
+  emp.cidade=d.municipio||'';
+  emp.estado=d.uf||'';
+  emp.telefone=d.ddd_telefone_1?formatarMascara('tel',String(d.ddd_telefone_1)):'';
+  emp.email=String(d.email||'').toLowerCase();
+  emp.data_constituicao=d.data_inicio_atividade?String(d.data_inicio_atividade).split('-').reverse().join('/'):'';
+  emp.capital_atual=Number(d.capital_social)>0?Number(d.capital_social).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'';
+  let obj=d.cnae_fiscal_descricao||'';
+  const sec=(d.cnaes_secundarios||[]).map(c=>c&&c.descricao).filter(Boolean);
+  if(sec.length)obj+=(obj?'; ':'')+sec.join('; ');
+  emp.objeto_social=obj;
+  const socios=(d.qsa||[]).map(q=>({nome:(q&&(q.nome_socio||q.nome))||''})).filter(s=>s.nome);
+  return {empresa:emp,socios:socios,situacao:d.descricao_situacao_cadastral||''};
+}
+async function consultarCnpjApi(cnpj){
+  const numero=String(cnpj||'').replace(/\D/g,'');
+  if(numero.length!==14)throw new Error('Informe um CNPJ completo (14 dígitos).');
+  const r=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+numero);
+  if(r.status===404)throw new Error('CNPJ não encontrado na base da Receita.');
+  if(!r.ok)throw new Error('Consulta indisponível no momento (HTTP '+r.status+'). Tente novamente em instantes.');
+  return mapearDadosCnpj(await r.json());
+}
+async function empresaBuscarCnpj(){
+  coletarFormularios();
+  try{
+    toast('Consultando a Receita Federal...');
+    const m=await consultarCnpjApi(estado.empresa.cnpj);
+    Object.keys(m.empresa).forEach(k=>{if(m.empresa[k])estado.empresa[k]=m.empresa[k];});
+    if(m.socios.length&&confirm('Importar '+m.socios.length+' sócio(s) do quadro societário da Receita? (substitui a lista atual de sócios)')){
+      estado.socios=m.socios.map(s=>({nome:s.nome}));
+    }
+    gravar(CHAVE_ESTADO,estado);preencherFormularios();
+    toast('Dados da Receita aplicados'+(m.situacao?' — situação: '+m.situacao:''));
+  }catch(e){toast('Erro: '+(e.message||e));}
+}
+
+/* ---- Geração rápida (wizard) ---- */
+let rapidoSocios=[{nome:'',cpf:'',pct:''},{nome:'',cpf:'',pct:''}];
+let rapidoEmpresa=null; // último resultado da busca por CNPJ
+function montarRapido(){
+  const sm=el('rap-modelo');const atual=sm.value;
+  sm.innerHTML='';
+  modelos.forEach(m=>{const o=document.createElement('option');o.value=m.id;o.textContent=m.nome+' ('+m.tipo+')';sm.appendChild(o);});
+  if(atual)sm.value=atual;
+  renderRapidoSocios();
+  rapidoTipoEmpresa();
+}
+function rapidoTipoEmpresa(){
+  const t=el('rap-tipoemp').value;
+  el('rap-existente').style.display=t==='existente'?'grid':'none';
+  el('rap-nova').style.display=t==='nova'?'grid':'none';
+}
+function renderRapidoSocios(){
+  const tb=el('rap-socios').querySelector('tbody');tb.innerHTML='';
+  rapidoSocios.forEach((s,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td><input data-rap="'+i+'" data-rc="nome" value="'+esc(s.nome||'')+'" placeholder="Nome completo" oninput="rapidoCampo(this)"></td>'+
+      '<td><input data-rap="'+i+'" data-rc="cpf" data-mask="cpf" value="'+esc(s.cpf||'')+'" placeholder="000.000.000-00" oninput="mascarar(this);rapidoCampo(this)"></td>'+
+      '<td><input data-rap="'+i+'" data-rc="pct" value="'+esc(s.pct||'')+'" placeholder="%" inputmode="decimal" oninput="rapidoCampo(this)"></td>'+
+      '<td>'+(rapidoSocios.length>1?'<button class="btn perigo" onclick="rapidoRemSocio('+i+')">✕</button>':'')+'</td>';
+    tb.appendChild(tr);
+  });
+  montarRapAdmin();
+}
+function rapidoCampo(inp){
+  const i=+inp.dataset.rap,c=inp.dataset.rc;
+  if(rapidoSocios[i]){rapidoSocios[i][c]=inp.value;if(c==='nome')montarRapAdmin();}
+}
+function montarRapAdmin(){
+  const s=el('rap-admin');if(!s)return;const atual=s.value;
+  s.innerHTML='';
+  rapidoSocios.forEach((so,i)=>{const o=document.createElement('option');o.value='socio_'+i;o.textContent=so.nome||('Sócio '+(i+1));s.appendChild(o);});
+  const t=document.createElement('option');t.value='todos';t.textContent='Todos os sócios';s.appendChild(t);
+  let existe=false;for(let k=0;k<s.options.length;k++)if(s.options[k].value===atual)existe=true;
+  s.value=existe&&atual?atual:'todos';
+}
+function rapidoAddSocio(){rapidoSocios.push({nome:'',cpf:'',pct:''});renderRapidoSocios();}
+function rapidoRemSocio(i){rapidoSocios.splice(i,1);if(!rapidoSocios.length)rapidoSocios=[{nome:'',cpf:'',pct:''}];renderRapidoSocios();}
+function rapidoIgualar(){
+  const n=rapidoSocios.length;if(!n)return;
+  const base=Math.floor(10000/n)/100;
+  rapidoSocios.forEach((s,i)=>{
+    const p=(i===n-1)?Math.round((100-base*(n-1))*100)/100:base;
+    s.pct=String(p).replace('.',',');
+  });
+  renderRapidoSocios();
+}
+async function rapidoBuscarCnpj(){
+  const st=el('rap-cnpj-status');
+  st.innerHTML='<span class="spinner"></span> Consultando a Receita Federal...';
+  try{
+    const m=await consultarCnpjApi(el('rap-cnpj').value);
+    rapidoEmpresa=m;
+    if(m.socios.length){rapidoSocios=m.socios.map(s=>({nome:s.nome,cpf:'',pct:''}));rapidoIgualar();}
+    st.innerHTML='<span style="color:var(--ok)">✔ '+esc(m.empresa.razao_social)+(m.situacao?' — '+esc(m.situacao):'')+'. Endereço, atividade e capital importados. '+(m.socios.length?(m.socios.length+' sócio(s) do quadro societário na lista abaixo — complete o CPF e ajuste os %.'):'O quadro societário público veio vazio — adicione os sócios abaixo.')+'</span>';
+  }catch(e){rapidoEmpresa=null;st.innerHTML='<span style="color:var(--erro)">Erro: '+esc(e.message||e)+'</span>';}
+}
+async function rapidoCep(inp){
+  const cep=(inp.value||'').replace(/\D/g,'');if(cep.length!==8)return;
+  try{
+    const r=await fetch('https://viacep.com.br/ws/'+cep+'/json/');const d=await r.json();
+    if(d&&!d.erro){
+      if(d.logradouro&&!el('rap-endereco').value)el('rap-endereco').value=d.logradouro;
+      if(d.localidade)el('rap-cidade').value=d.localidade;
+      if(d.uf)el('rap-uf').value=d.uf;
+    }
+  }catch(e){/* offline: segue manual */}
+}
+function aplicarRapido(){
+  const avisos=el('rap-avisos');avisos.innerHTML='';
+  const probs=[];
+  const modeloId=el('rap-modelo').value;
+  if(!modeloId)probs.push('Selecione o documento (cadastre um modelo na aba Modelos).');
+  const socios=rapidoSocios.filter(s=>s.nome&&s.nome.trim());
+  if(!socios.length)probs.push('Informe ao menos um sócio com nome.');
+  const temPct=socios.some(s=>num(s.pct)>0);
+  const somaPct=socios.reduce((a,s)=>a+num(s.pct),0);
+  if(temPct&&Math.abs(somaPct-100)>0.05)probs.push('Os percentuais somam '+somaPct.toLocaleString('pt-BR')+'% — ajuste para 100% (ou use “Dividir igualmente”).');
+  const tipoEmp=el('rap-tipoemp').value;
+  if(tipoEmp==='existente'&&!rapidoEmpresa&&!el('rap-cnpj').value.trim())probs.push('Informe o CNPJ e clique em “Buscar na Receita” (ou mude para “Empresa nova”).');
+  if(tipoEmp==='nova'&&!el('rap-razao').value.trim())probs.push('Informe a razão social da nova empresa.');
+  if(probs.length){avisos.innerHTML=probs.map(p=>'<li class="e">✕ '+esc(p)+'</li>').join('');return;}
+  // monta o estado a partir do mínimo informado
+  coletarFormularios();
+  if(tipoEmp==='existente'){
+    if(rapidoEmpresa)Object.keys(rapidoEmpresa.empresa).forEach(k=>{if(rapidoEmpresa.empresa[k])estado.empresa[k]=rapidoEmpresa.empresa[k];});
+    else estado.empresa.cnpj=el('rap-cnpj').value.trim();
+  }else{
+    estado.empresa.razao_social=el('rap-razao').value.trim();
+    estado.empresa.natureza_juridica=el('rap-natureza').value.trim()||'limitada';
+    if(el('rap-atividade').value.trim())estado.empresa.objeto_social=el('rap-atividade').value.trim();
+    if(el('rap-endereco').value.trim())estado.empresa.endereco=el('rap-endereco').value.trim();
+    if(el('rap-cep').value.trim())estado.empresa.cep=el('rap-cep').value.trim();
+    if(el('rap-cidade').value.trim())estado.empresa.cidade=el('rap-cidade').value.trim();
+    if(el('rap-uf').value.trim())estado.empresa.estado=el('rap-uf').value.trim().toUpperCase();
+  }
+  const capStr=el('rap-capital').value.trim();
+  const capVal=num(capStr);
+  const totQuotas=capVal>0?Math.round(capVal):0; // quotas de R$ 1,00 cada (praxe)
+  const pcts=socios.map(s=>temPct?num(s.pct):100/socios.length);
+  const quotas=distribuirQuotas(totQuotas,pcts);
+  estado.socios=socios.map((s,i)=>({nome:s.nome.trim(),cpf:s.cpf||'',quotas:totQuotas?String(quotas[i]):''}));
+  if(capVal>0){estado.capital={valor:capStr,quotas:String(totQuotas)};estado.empresa.capital_atual=capStr;}
+  estado.administracao={tipo:el('rap-admin').value||'todos',terceiro:(estado.administracao&&estado.administracao.terceiro)||{}};
+  if(estado.empresa.cidade){
+    estado.foro={comarca:estado.empresa.cidade,cidade:estado.empresa.cidade,uf:estado.empresa.estado||''};
+    estado.assinatura={cidade:estado.empresa.cidade,uf:estado.empresa.estado||'',data:dataHojeISO()};
+  }else{
+    estado.assinatura=estado.assinatura||{};
+    if(!estado.assinatura.data)estado.assinatura.data=dataHojeISO();
+  }
+  gravar(CHAVE_ESTADO,estado);
+  preencherFormularios();
+  abrirAba('gerar');
+  el('sel-modelo').value=modeloId;
+  gerarContrato();
+}
+
+/* =========================================================================
    MODELOS
    ========================================================================= */
 function novoModelo(){
@@ -1366,6 +1596,7 @@ function aplicarDadosIA(d){
    NAVEGAÇÃO
    ========================================================================= */
 const ABAS=[
+  ['rapido','⚡ Rápido',''],
   ['modelos','Modelos','01'],['empresa','Empresa','02'],['socios','Sócios','03'],
   ['quotas','Quotas','04'],['administracao','Administração','05'],['alteracoes','Alterações','06'],
   ['foro','Foro','07'],['assinatura','Assinatura','08'],['gerar','Gerar','09'],
@@ -1388,6 +1619,7 @@ function abrirAba(id){
   if(id==='gerar')atualizarSeletorModelos();
   if(id==='historico')montarHistorico();
   if(id==='ia')montarSelDocSocio();
+  if(id==='rapido')montarRapido();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -1682,6 +1914,25 @@ function autoteste(){
   v('CNPJ formatado',formatarMascara('cnpj','12345678000190')==='12.345.678/0001-90');
   v('CEP formatado',formatarMascara('cep','13500000')==='13500-000');
 
+  linhas.push('— Distribuição de quotas (geração rápida) —');
+  v('50/50 em 10000 → 5000/5000',JSON.stringify(distribuirQuotas(10000,[50,50]))==='[5000,5000]');
+  v('60/40 em 10000 → 6000/4000',JSON.stringify(distribuirQuotas(10000,[60,40]))==='[6000,4000]');
+  v('33,33/33,33/33,34 fecha 10000',distribuirQuotas(10000,[33.33,33.33,33.34]).reduce((a,b)=>a+b,0)===10000);
+  v('3 iguais em 100 fecha 100',distribuirQuotas(100,[1,1,1]).reduce((a,b)=>a+b,0)===100);
+  v('sem percentuais → zeros',JSON.stringify(distribuirQuotas(1000,[0,0]))==='[0,0]');
+
+  linhas.push('— Mapeamento CNPJ (BrasilAPI) —');
+  const fx=mapearDadosCnpj({razao_social:'PADARIA X LTDA',cnpj:'12345678000190',natureza_juridica:'206-2 - Sociedade Empresária Limitada',logradouro:'RUA A',numero:'10',municipio:'RIO CLARO',uf:'SP',cep:'13500000',capital_social:50000,cnae_fiscal_descricao:'Padaria',cnaes_secundarios:[{descricao:'Confeitaria'}],qsa:[{nome_socio:'JOAO'},{nome_socio:'MARIA'}],ddd_telefone_1:'1935224444',data_inicio_atividade:'2020-01-15',descricao_situacao_cadastral:'ATIVA'});
+  v('CNPJ com máscara',fx.empresa.cnpj==='12.345.678/0001-90');
+  v('natureza sem o código',fx.empresa.natureza_juridica==='Sociedade Empresária Limitada');
+  v('endereço rua, nº',fx.empresa.endereco==='RUA A, 10');
+  v('capital 50.000,00',fx.empresa.capital_atual==='50.000,00');
+  v('objeto = principal; secundários',fx.empresa.objeto_social==='Padaria; Confeitaria');
+  v('QSA vira lista de sócios',fx.socios.length===2&&fx.socios[0].nome==='JOAO');
+  v('data de constituição dd/mm/aaaa',fx.empresa.data_constituicao==='15/01/2020');
+  v('situação cadastral',fx.situacao==='ATIVA');
+  v('data de hoje em ISO',/^\d{4}-\d{2}-\d{2}$/.test(dataHojeISO()));
+
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
   el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
@@ -1697,7 +1948,7 @@ function init(){
   montarConfigIA();
   preencherFormularios();
   if(!modelos.length)inserirModelosExemplo();else{montarListaModelos();atualizarSeletorModelos();}
-  abrirAba('modelos');
+  abrirAba('rapido');
   if(/[?&]teste=1/.test(location.search))autoteste();
 }
 document.addEventListener('DOMContentLoaded',init);

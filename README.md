@@ -5,6 +5,15 @@ Sistema web para **geração automática de contratos sociais, alterações cont
 ## Como abrir
 Dê um duplo-clique em **`index.html`**. Abre em qualquer navegador (Chrome, Edge, Firefox), **sem instalar nada**. Funciona offline — exceto a extração por IA, que precisa de internet.
 
+## ⚡ Geração rápida (o jeito normal de usar)
+A primeira aba, **⚡ Rápido**, gera o contrato com o mínimo de digitação:
+1. Escolha o **documento** (constituição, alteração, distrato…).
+2. **Empresa já existe?** Digite o **CNPJ** e clique em *Buscar na Receita Federal* — razão social, endereço, natureza, atividade (CNAEs), capital e **os sócios do quadro societário** entram sozinhos. **Empresa nova?** Informe razão social + atividade em 1 linha (o CEP puxa o endereço).
+3. Complete **CPF e % de cada sócio** (botão *÷ Dividir igualmente* ajuda).
+4. Informe o **capital** e **quem administra** → **⚡ Gerar contrato**.
+
+O sistema assume o resto por padrão: quotas de R$ 1,00 (praxe), foro e cidade de assinatura = cidade da sede, data = hoje. Tudo pode ser refinado depois nas outras abas (as fichas completas continuam lá).
+
 ## Fluxo de uso
 1. **Modelos** — cadastre/edite os modelos da empresa. Use marcadores no texto:
    - `{{razao_social}}`, `{{cnpj}}`, `{{capital_valor}}`, `{{capital_valor_extenso}}`, `{{administrador}}`, `{{foro}}`, `{{local_data}}` …
@@ -43,7 +52,7 @@ Na mesma aba, o bloco **Ler documentos pessoais**: escolha qual sócio preencher
 Tudo (formulários, modelos, histórico, chave) é salvo no **armazenamento do próprio navegador** deste computador. Não vai para nenhum servidor. Trocar de navegador ou limpar os dados do navegador apaga as informações.
 
 ## Verificação automática
-Abra **`index.html?teste=1`** para rodar o autoteste interno (70 verificações: cálculo de quotas, valor/data por extenso, motor de template, concordância de gênero, numeração de cláusulas e máscaras). Deve mostrar "70/70 verificações OK".
+Abra **`index.html?teste=1`** para rodar o autoteste interno (84 verificações: cálculo e distribuição de quotas, valor/data por extenso, motor de template, concordância de gênero, numeração de cláusulas, máscaras e mapeamento da consulta CNPJ). Deve mostrar "84/84 verificações OK".
 
 ---
 MAXIMOS Soluções Empresariais · arquivo único, sem instalação.
