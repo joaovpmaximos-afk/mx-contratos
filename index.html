@@ -2311,13 +2311,15 @@ E, por estarem justos e contratados, {{assinam}} o presente instrumento em 3 (tr
 {{nome}}
 
 {{/each}}`;
-const MODELOS_MAXIMOS=[['Alteração e Consolidação (padrão MAXIMOS)','Alteração Contratual',MODELO_ALT_CONSOLIDACAO]];
+// [nome, tipo, corpo, nomes antigos] — nome antigo é renomeado no navegador de quem já tinha (não duplica)
+const MODELOS_MAXIMOS=[['Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS','Alteração Contratual',MODELO_ALT_CONSOLIDACAO,['Alteração e Consolidação (padrão MAXIMOS)']]];
 // quem já usa o sistema recebe os modelos do escritório sem precisar clicar em nada (e a versão nova, se mudou)
 // só mexe na lista recebida e diz se mudou; quem grava é o init (o autoteste usa listas de mentira sem tocar no navegador)
 function garantirModelosMaximos(lista){
   let mudou=false;
-  MODELOS_MAXIMOS.forEach(([nome,tipo,corpo],i)=>{
-    const m=lista.find(x=>x.nome===nome);
+  MODELOS_MAXIMOS.forEach(([nome,tipo,corpo,antigos],i)=>{
+    let m=lista.find(x=>x.nome===nome);
+    if(!m){m=lista.find(x=>(antigos||[]).includes(x.nome));if(m){m.nome=nome;mudou=true;}}
     if(!m){lista.push({id:'mx'+(Date.now()+i),nome,tipo,corpo});mudou=true;}
     else if(m.corpo!==corpo&&!m.editado){m.corpo=corpo;m.tipo=tipo;mudou=true;}
   });
@@ -2736,6 +2738,7 @@ function autoteste(){
   v('tabela importada é tabela; linha e nome em parágrafos separados viram 1 assinatura',bt.map(b=>b.tipo).join()==='paragrafo,tabela,assinatura'&&bt[2].linhas[1][0].t==='FULANA');
   v('"CNPJ nº ..." em negrito e maiúsculas conta como título',estruturarTexto('**CNPJ nº 11.222.333/0001-44**')[0].tipo==='titulo');
   v('CNAE com código a partir da Receita',mapearDadosCnpj({cnae_fiscal:4530703,cnae_fiscal_descricao:'Comércio a varejo de peças',cnaes_secundarios:[{codigo:0,descricao:''}]}).empresa.objeto_social==='45.30-7-03 - Comércio a varejo de peças');
+  v('nome antigo do modelo é renomeado (sem duplicar e sem perder a edição)',(()=>{const l=[{nome:'Alteração e Consolidação (padrão MAXIMOS)',corpo:'meu texto',editado:true}];const mudou=garantirModelosMaximos(l);return mudou&&l.length===1&&l[0].nome==='Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'&&l[0].corpo==='meu texto';})());
   v('modelo do escritório entra sozinho p/ quem já tem modelos, sem apagar editado',(()=>{const l1=[{nome:'Meu',corpo:'x'},{nome:MODELOS_MAXIMOS[0][0],corpo:'editado à mão',editado:true}];const m1=garantirModelosMaximos(l1);const l2=[{nome:'Meu',corpo:'x'}];const m2=garantirModelosMaximos(l2);return !m1&&l1[1].corpo==='editado à mão'&&m2&&l2.length===2&&l2[1].corpo===MODELO_ALT_CONSOLIDACAO;})());
 
   estado=estadoVazio();
