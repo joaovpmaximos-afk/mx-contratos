@@ -443,7 +443,10 @@
   .alt-campos{padding:0;display:none}
   .alt-campos.aberto{display:block;margin-top:14px;padding-top:14px;border-top:1px dashed var(--linha)}
   .avisos{margin:0 0 16px;padding:0;list-style:none}
-  .avisos li{padding:11px 14px;border-radius:12px;font-size:13.5px;margin-bottom:8px;display:flex;gap:9px;align-items:flex-start;border:1px solid transparent}
+  .avisos li{padding:11px 14px;border-radius:12px;font-size:13.5px;margin-bottom:8px;display:flex;gap:9px;align-items:center;border:1px solid transparent}
+  /* ícone dentro do aviso tem tamanho fixo (sem isso o SVG ocupa a caixa inteira) */
+  .avisos li>svg{width:17px;height:17px;flex:0 0 17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .avisos li b{font-weight:650}
   .avisos li.e{background:var(--erro-bg);color:#FCA5A5;border-color:rgba(239,68,68,.25)}
   .avisos li.w{background:var(--aviso-bg);color:#FCD34D;border-color:rgba(245,158,11,.25)}
   .avisos li.ok{background:var(--ok-bg);color:var(--verde2);border-color:rgba(32,199,122,.25)}
@@ -644,6 +647,7 @@
 
   <!-- INÍCIO -->
   <section class="secao" data-aba="inicio">
+    <div id="aviso-backup"></div>
     <div class="titulo-tela">
       <div>
         <h1 id="saudacao">Vamos criar seu contrato.</h1>
@@ -656,7 +660,7 @@
     </div>
 
     <div class="destaques">
-      <button class="destaque ouro" onclick="abrirAba('novo')">
+      <button class="destaque ouro" onclick="novoCaso()">
         <span class="ic" id="ic-destaque-novo"></span>
         <span><b>Novo contrato</b><span>Criar um contrato do zero, com a ajuda da IA.</span></span>
         <span class="seta" id="seta-destaque-novo"></span>
@@ -674,7 +678,10 @@
         <span><b>Continuar trabalhando</b><small>Contratos em andamento neste computador</small></span>
         <button class="btn fantasma peq link" onclick="abrirAba('historico')">Ver todos</button>
       </div>
-      <div id="inicio-continuar" class="cards-andamento"></div>
+        <div id="lista-casos" class="cards-andamento"></div>
+      <div class="barra-acoes" style="margin-top:14px">
+        <button class="btn contorno peq" onclick="novoCaso()">＋ Começar outro contrato</button>
+      </div>
     </div>
 
     <div class="card">
@@ -817,9 +824,9 @@
       <p class="desc">Comece pelo CNPJ: o sistema busca razão social, endereço, natureza jurídica, atividades, capital e o quadro de sócios na Receita Federal. Ao digitar o CEP, o endereço vem sozinho.</p>
       <div class="barra-acoes" style="margin-bottom:16px">
         <button class="btn primario" onclick="empresaBuscarCnpj(event)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 4.5 7v5c0 4.3 3.1 8.1 7.5 9 4.4-.9 7.5-4.7 7.5-9V7z"/><path d="M9.5 12.2 11.3 14l3.3-3.6"/></svg> Buscar dados na Receita (CNPJ)</button>
-        <button class="btn contorno" onclick="exportarDados()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg> Exportar dados (backup)</button>
+        <button class="btn contorno" onclick="baixarBackupCompleto()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg> Exportar dados (backup)</button>
         <button class="btn contorno" onclick="document.getElementById('imp-dados').click()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5v-11"/><path d="M7.5 13.5 12 9l4.5 4.5"/><path d="M4 4h16"/></svg> Importar dados</button>
-        <input type="file" id="imp-dados" accept="application/json,.json" style="display:none" onchange="importarDados(event)">
+        <input type="file" id="imp-dados" accept="application/json,.json" style="display:none" onchange="importarBackupCompleto(event)">
         <button class="btn perigo" onclick="limparTudo()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6.5 7 7 19a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l.5-12"/><path d="M10.5 11v6M13.5 11v6"/></svg> Limpar tudo</button>
       </div>
       <div id="resumo-empresa"></div>
@@ -1072,6 +1079,8 @@ const CHAVE_ESTADO='mxcontratos_estado_v1';
 const CHAVE_MODELOS='mxcontratos_modelos_v1';
 const CHAVE_HIST='mxcontratos_historico_v1';
 const CHAVE_CFG='mxcontratos_config_v1';
+const CHAVE_CASOS='mxcontratos_casos_v1';     // vários contratos em andamento
+const CHAVE_BACKUP='mxcontratos_backup_v1';   // quando foi o último backup
 const CHAVE_DEEPSEEK_PADRAO=''; // chave DeepSeek pre-configurada — troque/limpe aqui ou na aba "Preencher com IA"
 
 const TIPOS_MODELO=['Constituição','Alteração Contratual','Consolidação','Transformação Empresarial','Distrato Social','Outros'];
@@ -1143,7 +1152,11 @@ function salvar(){
   estado.atualizado_em=new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   if(typeof mostrarSalvando==='function')mostrarSalvando();
   clearTimeout(timerSalvar);
-  timerSalvar=setTimeout(()=>{gravar(CHAVE_ESTADO,estado);if(typeof atualizarTopo==='function'){atualizarTopo();montarNav();}},250);
+  timerSalvar=setTimeout(()=>{
+    gravar(CHAVE_ESTADO,estado);
+    if(typeof salvarCasoAtivo==='function')salvarCasoAtivo();
+    if(typeof atualizarTopo==='function'){atualizarTopo();montarNav();}
+  },250);
 }
 function salvarConfig(){const prov=el('cfg-provedor').value;config.provedor=prov;config[prov]=config[prov]||{};config[prov].apikey=el('cfg-apikey').value.trim();config[prov].modelo=el('cfg-modelo').value;gravar(CHAVE_CFG,config);}
 
@@ -3515,6 +3528,33 @@ function autoteste(){
   estado.socios=[{nome:'A',cpf:'1'},{nome:'B',cpf:'2'}];const cu2=montarContexto();
   v('2 sócios → resolvem/assinam/os sócios',cu2.resolve==='resolvem'&&cu2.assina==='assinam'&&cu2.os_socios==='os sócios');
 
+  linhas.push('— Vários contratos em andamento —');
+  const antigo={empresa:{razao_social:'ANTIGA LTDA'},socios:[{nome:'ANA'}],capital:{valor:'1,00'},administracao:{tipo:'todos',terceiro:{}},alteracoes:{},foro:{},assinatura:{}};
+  const migrado=migrarParaCasos(null,antigo);
+  v('quem tinha um contrato salvo vira um caso, sem perder nada',migrado.lista.length===1&&migrado.ativo===migrado.lista[0].id&&migrado.lista[0].estado.empresa.razao_social==='ANTIGA LTDA');
+  v('navegador vazio não inventa caso',migrarParaCasos(null,null).lista.length===0&&migrarParaCasos(null,estadoVazio()).lista.length===0);
+  const jaLista={ativo:'c1',lista:[{id:'c1',estado:antigo},{id:'c2',estado:estadoVazio()}]};
+  v('quem já está no formato novo não é migrado de novo',migrarParaCasos(jaLista,antigo)===jaLista);
+  v('resumo do caso mostra empresa, operação e nº de sócios',(()=>{const r=resumoCaso({id:'c1',estado:Object.assign({operacao:'alteracao'},antigo)});return r.empresa==='ANTIGA LTDA'&&r.operacao==='Alteração contratual'&&r.socios===1;})());
+  v('caso sem empresa não fica sem nome',resumoCaso({id:'c9',estado:estadoVazio()}).empresa==='(contrato sem empresa)');
+
+  linhas.push('— Backup completo —');
+  (()=>{
+    const casosOrig=casos,modOrig=modelos,histOrig=historico;
+    casos={ativo:'c1',lista:[{id:'c1',estado:antigo}]};
+    modelos=[{id:'m1',nome:'Meu modelo',tipo:'Outros',corpo:'x'}];
+    historico=[{id:'h1',empresa:'ANTIGA LTDA',tipo:'Constituição',versao:1,data:'01/01/2026',texto:'t'}];
+    config={deepseek:{apikey:'sk-segredo-nao-pode-sair',modelo:'deepseek-chat'}};
+    const b=montarBackupCompleto();
+    v('backup leva contratos, modelos e histórico',b.formato==='mx-contratos-backup'&&b.casos.lista.length===1&&b.modelos.length===1&&b.historico.length===1);
+    v('a chave de IA NÃO vai no backup',JSON.stringify(b).indexOf('sk-segredo')<0&&b.config.deepseek.apikey==='');
+    const lido=lerBackupCompleto(JSON.parse(JSON.stringify(b)));
+    v('restaurar traz contratos, modelos e histórico de volta',!!lido&&lido.casos.lista.length===1&&lido.casos.lista[0].estado.empresa.razao_social==='ANTIGA LTDA'&&lido.modelos.length===1&&lido.historico.length===1);
+    v('arquivo de outro formato é recusado',lerBackupCompleto({qualquer:'coisa'})===null&&lerBackupCompleto(null)===null);
+    casos=casosOrig;modelos=modOrig;historico=histOrig;config=carregarConfig();
+  })();
+  v('dias desde o backup',diasDesdeBackup(new Date(Date.now()-3*86400000).toISOString())===3&&diasDesdeBackup('')===null&&diasDesdeBackup('bagunça')===null);
+
   linhas.push('— Papel do Word —');
   v('sem escolha salva, o papel é o timbrado',papelPadrao()==='timbrado');
   v('escolha salva vence o padrão',papelPadrao('limpo')==='limpo'&&papelPadrao('timbrado')==='timbrado');
@@ -4054,6 +4094,187 @@ function montarListaAssinantes(){
     (naoAssina.length?'<div class="avisos" style="margin-top:14px"><li class="w">⚠ Não assina(m): '+naoAssina.map(s=>esc(s.nome)).join(', ')+' — saída por notificação extrajudicial.</li></div>':'');
 }
 
+/* =========================================================================
+   CASOS — vários contratos em andamento no mesmo navegador
+   ========================================================================= */
+function casosVazio(){return {ativo:'',lista:[]};}
+// migra quem só tinha um contrato salvo (formato antigo) para a lista de casos
+function migrarParaCasos(guardado,estadoAntigo){
+  if(guardado&&Array.isArray(guardado.lista))return guardado;
+  const casos=casosVazio();
+  const temAlgo=estadoAntigo&&((estadoAntigo.empresa&&estadoAntigo.empresa.razao_social)||(estadoAntigo.socios||[]).some(s=>s&&s.nome));
+  if(temAlgo){
+    const id='c'+Date.now();
+    casos.lista=[{id,estado:estadoAntigo}];
+    casos.ativo=id;
+  }
+  return casos;
+}
+function resumoCaso(c){
+  const e=(c.estado&&c.estado.empresa)||{};
+  return {
+    id:c.id,
+    empresa:e.razao_social||'(contrato sem empresa)',
+    operacao:(OPERACOES.find(o=>o.id===(c.estado&&c.estado.operacao))||{}).nome||'Contrato',
+    atualizado:(c.estado&&c.estado.atualizado_em)||'',
+    socios:((c.estado&&c.estado.socios)||[]).filter(s=>s&&s.nome).length
+  };
+}
+let casos=casosVazio();
+function carregarCasos(){
+  casos=migrarParaCasos(carregarJSON(CHAVE_CASOS,null),carregarJSON(CHAVE_ESTADO,null));
+  if(!casos.lista.length){const id='c'+Date.now();casos.lista=[{id,estado:estadoVazio()}];casos.ativo=id;}
+  if(!casos.lista.some(c=>c.id===casos.ativo))casos.ativo=casos.lista[0].id;
+  const ativo=casos.lista.find(c=>c.id===casos.ativo);
+  estado=ativo.estado;
+  if(!estado.socios||!estado.socios.length)estado.socios=[{}];
+  if(!estado.administracao)estado.administracao={tipo:'todos',terceiro:{}};
+  if(!estado.alteracoes)estado.alteracoes={};
+  gravar(CHAVE_CASOS,casos);
+  return casos;
+}
+function salvarCasoAtivo(){
+  const c=casos.lista.find(x=>x.id===casos.ativo);
+  if(c)c.estado=estado;
+  gravar(CHAVE_CASOS,casos);
+}
+function novoCaso(){
+  salvarCasoAtivo();
+  const id='c'+Date.now();
+  casos.lista.unshift({id,estado:estadoVazio()});
+  casos.ativo=id;estado=casos.lista[0].estado;
+  gravar(CHAVE_CASOS,casos);gravar(CHAVE_ESTADO,estado);
+  preencherFormularios();abrirAba('novo');
+  toast('Novo contrato criado');
+}
+function abrirCaso(id){
+  salvarCasoAtivo();
+  const c=casos.lista.find(x=>x.id===id);if(!c)return;
+  casos.ativo=id;estado=c.estado;
+  if(!estado.socios||!estado.socios.length)estado.socios=[{}];
+  gravar(CHAVE_CASOS,casos);gravar(CHAVE_ESTADO,estado);
+  preencherFormularios();abrirAba(proximaPendencia());
+  toast('Contrato aberto: '+resumoCaso(c).empresa);
+}
+function removerCaso(id){
+  const c=casos.lista.find(x=>x.id===id);if(!c)return;
+  if(!confirm('Excluir o contrato de '+resumoCaso(c).empresa+'? O que já foi gerado continua no histórico.'))return;
+  casos.lista=casos.lista.filter(x=>x.id!==id);
+  if(!casos.lista.length){const novo='c'+Date.now();casos.lista=[{id:novo,estado:estadoVazio()}];casos.ativo=novo;}
+  if(!casos.lista.some(x=>x.id===casos.ativo))casos.ativo=casos.lista[0].id;
+  estado=casos.lista.find(x=>x.id===casos.ativo).estado;
+  gravar(CHAVE_CASOS,casos);gravar(CHAVE_ESTADO,estado);
+  preencherFormularios();montarCasos();montarNav();atualizarTopo();
+  if(abaAtual==='inicio')montarInicio();
+  toast('Contrato excluído');
+}
+function duplicarCaso(id){
+  salvarCasoAtivo();
+  const c=casos.lista.find(x=>x.id===id);if(!c)return;
+  const copia=JSON.parse(JSON.stringify(c.estado));
+  copia.atualizado_em=new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const novo='c'+Date.now();
+  casos.lista.unshift({id:novo,estado:copia});
+  gravar(CHAVE_CASOS,casos);montarCasos();
+  if(abaAtual==='inicio')montarInicio();
+  toast('Contrato duplicado');
+}
+function montarCasos(){
+  const c=el('lista-casos');if(!c)return;
+  salvarCasoAtivo();
+  const itens=casos.lista.map(x=>({...resumoCaso(x),ativo:x.id===casos.ativo,estado:x.estado}));
+  c.innerHTML=itens.map(i=>{
+    const est=estado, tmp=i.estado; estado=tmp; const pct=progressoContrato(); estado=est;
+    return '<div class="and"'+(i.ativo?' style="border-color:rgba(5,184,135,.55)"':'')+'>'+
+      '<div class="cab"><span class="ic tile-verde">'+svg('documento')+'</span>'+
+      '<span style="min-width:0"><b>'+esc(i.empresa)+'</b><small>'+esc(i.operacao)+(i.socios?' · '+i.socios+' sócio(s)':'')+'</small></span>'+
+      (i.ativo?'<span class="badge ok" style="margin-left:auto">'+svg('check')+'aberto</span>':'')+'</div>'+
+      '<div class="prog"><span class="barra"><i style="width:'+pct+'%;background:linear-gradient(90deg,var(--ouro3),var(--ouro))"></i></span><span>'+pct+'%</span></div>'+
+      (i.atualizado?'<div class="quando">'+svg('relogio')+'Última edição: '+esc(i.atualizado)+'</div>':'')+
+      '<div class="barra-acoes" style="margin:0">'+
+        (i.ativo?'<button class="btn contorno peq" onclick="abrirAba(proximaPendencia())">Continuar'+svg('seta')+'</button>'
+                :'<button class="btn ouro peq" onclick="abrirCaso(\''+i.id+'\')">Abrir</button>')+
+        '<button class="btn contorno peq" onclick="duplicarCaso(\''+i.id+'\')">'+svg('duplicar')+'Duplicar</button>'+
+        '<button class="btn perigo peq" onclick="removerCaso(\''+i.id+'\')" aria-label="Excluir contrato">'+svg('lixeira')+'</button>'+
+      '</div></div>';
+  }).join('');
+}
+
+/* =========================================================================
+   PROTEÇÃO DOS DADOS — backup completo e lembrete
+   ========================================================================= */
+function montarBackupCompleto(){
+  const cfg=JSON.parse(JSON.stringify(config||{}));
+  Object.keys(cfg).forEach(k=>{if(cfg[k]&&cfg[k].apikey)cfg[k]=Object.assign({},cfg[k],{apikey:''});}); // chave de IA não vai no backup
+  return {
+    formato:'mx-contratos-backup',versao:2,em:new Date().toISOString(),
+    casos,modelos,historico,config:cfg
+  };
+}
+// lê e valida o arquivo, sem tocar em nada (é o que o autoteste usa)
+function lerBackupCompleto(d){
+  if(!d||d.formato!=='mx-contratos-backup')return null;
+  return {
+    casos:(d.casos&&Array.isArray(d.casos.lista))?d.casos:null,
+    modelos:(Array.isArray(d.modelos)&&d.modelos.length)?d.modelos:null,
+    historico:Array.isArray(d.historico)?d.historico:null
+  };
+}
+function aplicarBackupCompleto(d){
+  const p=lerBackupCompleto(d);
+  if(!p)return false;
+  if(p.casos){casos=p.casos;gravar(CHAVE_CASOS,casos);}
+  if(p.modelos){modelos=p.modelos;gravar(CHAVE_MODELOS,modelos);}
+  if(p.historico){historico=p.historico;gravar(CHAVE_HIST,historico);}
+  carregarCasos();
+  return true;
+}
+function diasDesdeBackup(iso,agora){
+  if(!iso)return null;
+  const t=Date.parse(iso);if(isNaN(t))return null;
+  return Math.floor(((agora||Date.now())-t)/86400000);
+}
+function marcarBackupFeito(){try{localStorage.setItem(CHAVE_BACKUP,new Date().toISOString());}catch(e){}avisarBackup();}
+function ultimoBackup(){try{return localStorage.getItem(CHAVE_BACKUP)||'';}catch(e){return '';}}
+function baixarBackupCompleto(){
+  salvarCasoAtivo();
+  const d=montarBackupCompleto();
+  const blob=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const hoje=new Date().toISOString().slice(0,10);
+  a.download='mx-contratos-backup-'+hoje+'.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  marcarBackupFeito();
+  toast('Backup salvo — guarde esse arquivo fora do computador');
+}
+function importarBackupCompleto(ev){
+  const f=ev.target.files[0];if(!f)return;ev.target.value='';
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(aplicarBackupCompleto(d)){
+        preencherFormularios();montarListaModelos();atualizarSeletorModelos();montarCasos();montarNav();atualizarTopo();abrirAba('inicio');
+        toast('Backup restaurado: '+casos.lista.length+' contrato(s), '+modelos.length+' modelo(s), '+historico.length+' versão(ões)');
+      }else{ // formato antigo: só o contrato
+        if(!d||!d.empresa)throw 0;
+        estado=d;salvarCasoAtivo();preencherFormularios();abrirAba('empresa');toast('Contrato importado');
+      }
+    }catch(e){toast('Arquivo inválido');}
+  };
+  r.readAsText(f,'utf-8');
+}
+function avisarBackup(){
+  const alvo=el('aviso-backup');if(!alvo)return;
+  const dias=diasDesdeBackup(ultimoBackup());
+  const temDados=casos.lista.some(c=>(c.estado.empresa&&c.estado.empresa.razao_social))||historico.length;
+  if(!temDados||(dias!==null&&dias<7)){alvo.innerHTML='';return;}
+  alvo.innerHTML='<div class="avisos" style="margin-bottom:18px"><li class="w">'+svg('alerta')+
+    '<span><b>'+(dias===null?'Você ainda não fez backup.':'Último backup há '+dias+' dias.')+'</b> '+
+    'Os contratos ficam só neste navegador: limpar os dados do navegador ou trocar de computador apaga tudo.</span>'+
+    '<button class="btn ouro peq" style="margin-left:auto" onclick="baixarBackupCompleto()">'+svg('salvar')+'Fazer backup agora</button></li></div>';
+}
+
 /* ---------------- Usuário, tema, busca e pendências ---------------- */
 function nomeUsuario(){try{return localStorage.getItem('mxcontratos_usuario')||'';}catch(e){return '';}}
 function iniciaisUsuario(){
@@ -4171,7 +4392,7 @@ function montarInicio(){
   const lista=el('faixa-ia-lista');
   if(lista)lista.innerHTML=['Preenche dados automaticamente','Identifica sócios e empresas','Analisa e sugere melhorias']
     .map(t=>'<li>'+svg('check')+esc(t)+'</li>').join('');
-  montarAndamento();
+  montarCasos();avisarBackup();
   el('inicio-atalhos').innerHTML=OPERACOES.filter(o=>o.id!=='livre').map(cardOperacao).join('');
   montarRecentes();
 }
@@ -4343,6 +4564,7 @@ function montarRevisao(){
    ========================================================================= */
 function init(){
   montando=true; // nada pode ler os formulários antes de eles serem preenchidos com o que está salvo
+  carregarCasos();
   montarNav();
   montarConfigIA();
   preencherFormularios();
