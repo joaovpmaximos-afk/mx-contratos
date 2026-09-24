@@ -937,9 +937,10 @@
           <h2>Entregar</h2>
           <div class="campo" style="margin-bottom:10px"><label>Papel do Word</label>
             <select id="sel-papel" title="Papel do Word">
-              <option value="limpo">Padrão MAXIMOS (sem timbrado)</option>
-              <option value="timbrado">Papel timbrado MAXIMOS</option>
+              <option value="timbrado" selected>Papel timbrado MAXIMOS</option>
+              <option value="limpo">Sem timbrado (papel branco)</option>
             </select>
+            <div class="dica">O timbrado é o padrão. Para protocolo na Junta, muitos cartórios preferem o papel branco — dá para trocar aqui a qualquer momento.</div>
           </div>
           <div style="display:grid;gap:8px">
             <button class="btn ouro" onclick="baixarWord(event)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg> Gerar Word (.docx)</button>
@@ -2556,6 +2557,10 @@ async function gerarDocx(texto,papel,titulo,tipoSaida){
   }
   return zip.generateAsync({type:tipoSaida||'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
 }
+// papel do Word: o timbrado do escritório é o padrão; a escolha de quem usa manda
+const PAPEIS=['timbrado','limpo'];
+function papelPadrao(escolhido){return PAPEIS.includes(escolhido)?escolhido:'timbrado';}
+function lerPapelSalvo(){try{return localStorage.getItem('mxcontratos_papel')||'';}catch(e){return '';}}
 function nomeArquivoContrato(){
   const id=el('sel-modelo').value;const m=modelos.find(x=>x.id===id);
   const base=((m?m.nome+' - ':'')+(estado.empresa.razao_social||'contrato'));
@@ -3508,6 +3513,12 @@ function autoteste(){
   estado.socios=[{nome:'A',cpf:'1'},{nome:'B',cpf:'2'}];const cu2=montarContexto();
   v('2 sócios → resolvem/assinam/os sócios',cu2.resolve==='resolvem'&&cu2.assina==='assinam'&&cu2.os_socios==='os sócios');
 
+  linhas.push('— Papel do Word —');
+  v('sem escolha salva, o papel é o timbrado',papelPadrao()==='timbrado');
+  v('escolha salva vence o padrão',papelPadrao('limpo')==='limpo'&&papelPadrao('timbrado')==='timbrado');
+  v('valor estranho cai no timbrado',papelPadrao('xis')==='timbrado');
+  v('o timbrado do escritório está embutido',typeof TIMBRADO_DOCX_B64==='string'&&TIMBRADO_DOCX_B64.length>100000);
+
   linhas.push('— Tela inicial: datas e busca —');
   const hojeBr=new Date().toLocaleDateString('pt-BR');
   v('data de hoje vira "Hoje, hh:mm"',quandoCurto(hojeBr+', 14:32')==='Hoje, 14:32');
@@ -4334,7 +4345,7 @@ function init(){
   montarConfigIA();
   preencherFormularios();
   if(!modelos.length)inserirModelosExemplo();else{if(garantirModelosMaximos(modelos))gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();}
-  try{const p=localStorage.getItem('mxcontratos_papel');if(p&&el('sel-papel'))el('sel-papel').value=p;}catch(e){}
+  if(el('sel-papel'))el('sel-papel').value=papelPadrao(lerPapelSalvo());
   try{if(localStorage.getItem('mxcontratos_lateral')==='min')document.body.classList.add('lateral-min');}catch(e){}
   aplicarTema(temaAtual());aplicarUsuario();
   atualizarConexao();
