@@ -851,12 +851,12 @@
   <section class="secao" data-aba="quotas">
     <div class="card">
       <h2><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.6c0-1.2 1.1-1.9 2.5-1.9s2.5.6 2.5 1.8-1.1 1.6-2.5 1.9-2.5.8-2.5 2 1.1 1.9 2.5 1.9 2.5-.7 2.5-1.9"/></svg>Capital social e distribuição</h2>
-      <p class="desc">Informe o capital e o total de quotas. A participação de cada sócio é calculada e conferida em tempo real.</p>
+      <p class="desc">Informe o capital e o total de quotas — ou digite o valor de cada quota, que o sistema calcula a quantidade. A participação de cada sócio é conferida em tempo real.</p>
       <div class="resumo-capital" id="resumo-capital"></div>
       <div class="grade">
         <div class="campo c4"><label>Valor do capital social (R$)</label><input type="text" id="capital_valor" inputmode="decimal" placeholder="10.000,00" oninput="aoEditarCapital()"></div>
         <div class="campo c4"><label>Quantidade total de quotas</label><input type="text" id="capital_quotas" inputmode="numeric" placeholder="10000" oninput="aoEditarCapital()"></div>
-        <div class="campo c4"><label>Valor de cada quota (R$)</label><input type="text" id="capital_valorquota" readonly></div>
+        <div class="campo c4"><label>Valor de cada quota (R$)</label><input type="text" id="capital_valorquota" inputmode="decimal" placeholder="1,00" oninput="aoEditarValorQuota()" onblur="formatarValorQuota()"></div>
       </div>
       <table class="quotas" id="tabela-quotas">
         <thead><tr><th>Sócio</th><th style="width:160px">Quantidade de quotas</th><th style="width:160px">Valor (R$)</th><th style="width:120px">Participação</th></tr></thead>
@@ -921,9 +921,10 @@
       <h2><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18c2.5-3.5 4.2-3.5 6.7 0s4.2 3.5 6.7 0"/><path d="M5 14 15.5 3.5a2.1 2.1 0 0 1 3 3L8 17"/><path d="M19 21H9"/></svg>Local, data e assinaturas</h2>
       <p class="desc">Quem assina é calculado pelo quadro societário: sócios que ficam, sócios que saem cedendo quotas e o administrador não sócio. Quem sai por notificação extrajudicial não assina.</p>
       <div class="grade">
-        <div class="campo c6"><label>Cidade</label><input id="ass_cidade" placeholder="Rio Claro" oninput="salvar();montarDataExtenso()"></div>
-        <div class="campo c4"><label>Data</label><input type="date" id="ass_data" oninput="salvar();montarDataExtenso()"></div>
+        <div class="campo c5"><label>Cidade</label><input id="ass_cidade" placeholder="Rio Claro" oninput="salvar();montarDataExtenso()"></div>
+        <div class="campo c3"><label>Data</label><input type="date" id="ass_data" oninput="salvar();montarDataExtenso()"></div>
         <div class="campo c2"><label>UF</label><input id="ass_uf" placeholder="SP" maxlength="2" oninput="salvar()"></div>
+        <div class="campo c2"><label>Vias</label><input id="ass_vias" type="number" min="1" max="20" placeholder="3" oninput="salvar();montarDataExtenso()"></div>
         <div class="campo c12"><div class="dica">Prévia: <span id="ass-previa">—</span></div></div>
       </div>
       <div id="lista-assinantes" style="margin-top:20px"></div>
@@ -1229,7 +1230,7 @@ const MESES=['janeiro','fevereiro','março','abril','maio','junho','julho','agos
 function dataPorExtenso(iso){
   if(!iso)return '';const p=iso.split('-');if(p.length!==3)return '';
   const a=parseInt(p[0]),m=parseInt(p[1]),d=parseInt(p[2]);
-  if(!a||!m||!d)return '';return d+' de '+MESES[m-1]+' de '+a;
+  if(!a||!m||!d)return '';return (d===1?'1º':String(d))+' de '+MESES[m-1]+' de '+a;
 }
 
 /* =========================================================================
@@ -1462,6 +1463,11 @@ function enderecoSede(e){
   if(e.cep)s+=', CEP '+e.cep;
   return s;
 }
+// nº de vias do instrumento: 1 vira "via única"; vazio assume 3 vias, como no padrão do escritório
+function viasPorExtenso(v){
+  const n=Math.min(20,Math.max(1,inteiro(v)||3));
+  return n===1?'via única':n+' ('+extensoFeminino(n)+') vias de igual teor e forma';
+}
 function contextoMaximos(ctx,socios){
   const alt=estado.alteracoes||{};
   // quem fica / sai / entra (campo "situacao" do sócio)
@@ -1494,6 +1500,7 @@ function contextoMaximos(ctx,socios){
   ctx.retirantes_nomes=retNotif.map(s=>'**'+s.nome+'**').join(', ').replace(/, ([^,]*)$/,' e $1');
   ctx.dos_retirantes=artigoGrupo(retNotif.map(generoSocio),'do sócio','da sócia','dos sócios','das sócias');
   ctx.unicos_socios=artigoGrupo(socios.map(generoSocio),'único sócio','única sócia','únicos sócios','únicas sócias');
+  ctx.Unicos_socios=maiuscula1(ctx.unicos_socios);
   ctx.saida_arquivamento=alt.saida_arquivamento||'';ctx.saida_sessao=alt.saida_sessao||'';
   // empresa
   const e=estado.empresa||{};
@@ -1557,11 +1564,21 @@ function contextoMaximos(ctx,socios){
   ctx.o_socio_administrador=gensAdmSocio.length?artigoGrupo(gensAdmSocio,'o sócio administrador','a sócia administradora','os sócios administradores','as sócias administradoras'):artigoGrupo(gensAdm,'o administrador','a administradora','os administradores','as administradoras');
   ctx.prestara_adm=(gensAdmSocio.length||gensAdm.length)>1?'prestarão':'prestará';
   ctx.podera_adm=adms.length>1?'poderão':'poderá';
+  ctx.a_ele_cabendo=artigoGrupo(gensAdm,'a ele cabendo','a ela cabendo','a eles cabendo','a elas cabendo');
+  ctx.Os_socios=maiuscula1(ctx.o_socio);
+  ctx.de_cada_socio=atuais.length>1?'de cada sócio':artigoGrupo(gensAtuais,'do sócio','da sócia','dos sócios','das sócias');
+  ctx.qualificados_g=artigoGrupo(gensAtuais,'qualificado','qualificada','qualificados','qualificadas');
+  // na constituição o início das atividades é a data do contrato; sem ela, vale a data da assinatura
+  ctx.data_inicio_extenso=ctx.data_constituicao_extenso||dataPorExtenso(estado.assinatura.data)||'';
   // assinam: quem fica, quem sai cedendo quotas (na saída por notificação o retirante não assina) e o administrador não sócio
   const assin=atuais.concat(retCessao).map(s=>({nome:s.nome,cpf:s.cpf||''}));
   if(terceiro&&!assin.some(x=>x.nome.trim().toUpperCase()===terceiro.nome.trim().toUpperCase()))assin.push({nome:terceiro.nome,cpf:t.cpf||''});
   ctx.assinantes=assin;
   ctx.assinam=assin.length>1?'assinam':'assina';
+  // contrato de um só assinante fecha em "por estar justo e contratado" — plural só quando há mais de uma assinatura
+  const gensAssin=atuais.concat(retCessao).map(generoSocio).concat(terceiro?[terceiro.gen]:[]);
+  ctx.estarem_justos=artigoGrupo(gensAssin,'estar justo e contratado','estar justa e contratada','estarem justos e contratados','estarem justas e contratadas');
+  ctx.vias=viasPorExtenso((estado.assinatura||{}).vias);
 }
 
 /* =========================================================================
@@ -1746,6 +1763,20 @@ function alternarAlteracao(flag){
 }
 
 /* ---------------- Quotas ---------------- */
+// digitando o valor de cada quota, a quantidade sai do capital ÷ valor da quota
+function quotasPorValorDaQuota(capital,valorQuota){
+  const c=num(capital),v=num(valorQuota);
+  if(!(c>0)||!(v>0))return {quotas:0,exato:true};
+  const bruto=c/v,q=Math.round(bruto);
+  return {quotas:q,exato:Math.abs(bruto-q)<1e-9};
+}
+// o contrato imprime o valor da quota com 2 casas: se quotas × valor não fecha o capital, o texto sai errado
+function conferirValorQuota(capital,quotas){
+  const c=num(capital),q=inteiro(quotas);
+  if(!(c>0)||!(q>0))return {ok:true,valorQuota:0,total:0};
+  const vq=Math.round(c/q*100)/100,total=Math.round(vq*q*100)/100;
+  return {ok:Math.abs(total-c)<0.005,valorQuota:vq,total:total};
+}
 function montarTabelaQuotas(){
   const tb=el('tabela-quotas').querySelector('tbody');tb.innerHTML='';
   estado.socios.forEach((s,i)=>{
@@ -1759,13 +1790,13 @@ function montarTabelaQuotas(){
   el('capital_quotas').value=estado.capital.quotas||'';
   aoEditarCapital();
 }
-function aoEditarCapital(){
+function aoEditarCapital(origem){
   estado.capital.valor=el('capital_valor').value;
   estado.capital.quotas=el('capital_quotas').value;
   document.querySelectorAll('[data-quota]').forEach(inp=>{estado.socios[+inp.dataset.quota].quotas=inp.value;});
   const capVal=num(estado.capital.valor),totQ=inteiro(estado.capital.quotas);
   const vq=totQ>0?capVal/totQ:0;
-  el('capital_valorquota').value=vq?moeda(vq):'';
+  if(origem!=='valorquota'){el('capital_valorquota').value=vq?moeda(vq):'';mensagemCampo(el('capital_valorquota'),null);}
   const somaQ=somaQuotasAtuais(estado.socios),somaV=somaQ*vq;
   estado.socios.forEach((s,i)=>{
     const q=inteiro(s.quotas);const v=q*vq;
@@ -1786,9 +1817,28 @@ function aoEditarCapital(){
   else if(somaQ===totQ){av.innerHTML='<ul class="avisos"><li class="ok">'+svg('check')+'Distribuição fechada em 100% do capital.</li></ul>';}
   else{av.innerHTML='<ul class="avisos"><li class="'+(Math.abs(totQ-somaQ)/totQ>0.1?'e':'w')+'">'+svg('alerta')+
     'A distribuição precisa totalizar 100%: soma '+somaQ.toLocaleString('pt-BR')+' de '+totQ.toLocaleString('pt-BR')+' quotas (faltam '+(totQ-somaQ).toLocaleString('pt-BR')+').</li></ul>';}
+  // o contrato escreve o valor da quota com 2 casas; se quotas × valor não fecha o capital, o texto sai errado
+  const conf=conferirValorQuota(estado.capital.valor,estado.capital.quotas);
+  if(!conf.ok)av.innerHTML+='<ul class="avisos"><li class="w">'+svg('alerta')+'O capital não divide exato por esse total de quotas: '+totQ.toLocaleString('pt-BR')+' × '+moeda(conf.valorQuota)+' = '+moeda(conf.total)+', e não '+moeda(capVal)+'. Ajuste o capital, o total de quotas ou o valor de cada quota.</li></ul>';
   salvar();
 }
 
+function aoEditarValorQuota(){
+  const inp=el('capital_valorquota'),capital=el('capital_valor').value;
+  const r=quotasPorValorDaQuota(capital,inp.value);
+  if(r.quotas>0)el('capital_quotas').value=String(r.quotas);
+  aoEditarCapital('valorquota');
+  const v=num(inp.value);
+  if(!v)mensagemCampo(inp,null);
+  else if(!num(capital))mensagemCampo(inp,['Informe antes o valor do capital social.','erro']);
+  else if(!r.exato)mensagemCampo(inp,['O capital não divide exato por '+moeda(v)+': ficaram '+r.quotas.toLocaleString('pt-BR')+' quotas, que somam '+moeda(r.quotas*v)+'.','erro']);
+  else mensagemCampo(inp,[r.quotas.toLocaleString('pt-BR')+' quotas de '+moeda(v),'ok']);
+}
+function formatarValorQuota(){
+  const inp=el('capital_valorquota'),v=num(inp.value);
+  if(v>0)inp.value=moeda(v);
+  aoEditarValorQuota();
+}
 // cores da barra de participação: sem amarelo, legíveis no tema escuro e no claro
 const CORES_SOCIOS=['#05b887','#3B82F6','#8B5CF6','#0891B2','#2bcc9e','#6366F1','#EC4899','#1B5C96'];
 function montarVisualQuotas(capVal,totQ,vq){
@@ -1824,7 +1874,8 @@ function atualizarPreviasForo(){
 function montarDataExtenso(){
   const cid=el('ass_cidade').value,uf=el('ass_uf').value,d=el('ass_data').value;
   const ext=dataPorExtenso(d);
-  el('ass-previa').textContent=(cid?cid+(uf?'/'+uf.toUpperCase():''):'')+(ext?', '+ext+'.':'') || '—';
+  const local=(cid?cid+(uf?'/'+uf.toUpperCase():''):'')+(ext?', '+ext+'.':'');
+  el('ass-previa').textContent=(local||'—')+' · em '+viasPorExtenso(el('ass_vias')?el('ass_vias').value:'');
 }
 
 /* ---------------- Coleta dos formulários para o estado ---------------- */
@@ -1840,7 +1891,7 @@ function coletarFormularios(){
   estado.alteracoes=estado.alteracoes||{};
   document.querySelectorAll('[data-alt]').forEach(inp=>{estado.alteracoes[inp.dataset.alt]=inp.value;});
   estado.foro={comarca:val('foro_comarca'),cidade:val('foro_cidade'),uf:val('foro_uf')};
-  estado.assinatura={cidade:val('ass_cidade'),data:val('ass_data'),uf:val('ass_uf')};
+  estado.assinatura={cidade:val('ass_cidade'),data:val('ass_data'),uf:val('ass_uf'),vias:val('ass_vias')};
 }
 function val(id){const e=el(id);return e?e.value:'';}
 function preencherFormularios(){
@@ -1848,7 +1899,7 @@ function preencherFormularios(){
   montarFormEmpresa();montarFormSocios();montarTabelaQuotas();montarOpcoesAdmin();montarAlteracoes();
   ['adm_nome','adm_cpf','adm_rg','adm_endereco','adm_cargo'].forEach(k=>{const i=el(k);if(i&&estado.administracao.terceiro)i.value=estado.administracao.terceiro[k.replace('adm_','')]||(k==='adm_cargo'?'Administrador':'');});
   el('foro_comarca').value=estado.foro.comarca||'';el('foro_cidade').value=estado.foro.cidade||'';el('foro_uf').value=estado.foro.uf||'';
-  el('ass_cidade').value=estado.assinatura.cidade||'';el('ass_data').value=estado.assinatura.data||'';el('ass_uf').value=estado.assinatura.uf||'';
+  el('ass_cidade').value=estado.assinatura.cidade||'';el('ass_data').value=estado.assinatura.data||'';el('ass_uf').value=estado.assinatura.uf||'';el('ass_vias').value=estado.assinatura.vias||'';
   document.querySelectorAll('[data-mask]').forEach(mascarar);
   montando=false;
   atualizarPreviasForo();montarDataExtenso();
@@ -3222,7 +3273,116 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 
 **Cláusula {{clausula_num}} -** Fica eleito o foro da comarca de {{foro_comarca}}/{{foro_uf}}, com exclusão de qualquer outro por mais privilegiado que seja para dirimir dúvidas, questões ou ações originárias deste instrumento.
 
-E, por estarem justos e contratados, {{assinam}} o presente instrumento em 3 (três) vias de igual teor e forma.
+E, por {{estarem_justos}}, {{assinam}} o presente instrumento em {{vias}}.
+
+{{assinatura_cidade}}, {{assinatura_data}}.
+
+{{#each assinantes}}_________________________________________
+{{nome}}
+
+{{/each}}`;
+const MODELO_ALT_DADOS=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO CONTRATUAL DE SOCIEDADE LTDA.**
+
+**“{{razao_social}}”**
+
+**CNPJ nº {{cnpj}}**
+
+{{#each socios}}{{qualificacao_completa}}{{#unless @ultimo}}{{#if @penultimo}} e {{/if}}{{#unless @penultimo}}, {{/unless}}{{/unless}}{{/each}}.
+
+{{Unicos_socios}} da sociedade limitada denominada **{{razao_social}}**, com sede na {{sede_completa}}, inscrita no CNPJ sob nº {{cnpj}}, conforme o contrato de constituição registrado na Junta Comercial do Estado de {{estado_extenso}} sob o NIRE nº {{nire}}, {{resolve}} nesta data alterar o Contrato Social mediante as cláusulas e condições seguintes:
+
+{{#if alterou_razao_social}}**Cláusula {{clausula_num}} -** A sociedade girará sob a denominação social de **{{rs_nova}}**.
+
+{{/if}}{{#if alterou_endereco}}**Cláusula {{clausula_num}} -** A sede da sociedade será na {{end_novo}}.
+
+{{/if}}{{#if alterou_atividade}}**Cláusula {{clausula_num}} -** A sociedade terá por objeto o exercício das seguintes atividades econômicas: {{ativ_novo}}.
+
+{{/if}}{{#if mudou_administracao}}**Cláusula {{clausula_num}} -** A administração da sociedade passa a ser exercida {{administracao_de}}, {{a_ele_cabendo}} a responsabilidade ou representação ativa e passiva da sociedade, em juízo ou fora dele.
+
+{{/if}}**CONSOLIDAÇÃO**{{reiniciar_clausulas}}
+
+**Cláusula {{clausula_num}} -** A sociedade girará sob a denominação social de **{{razao_social_atual}}**.
+
+**Cláusula {{clausula_num}} -** A sede da sociedade será na {{sede_atual}}.
+
+**Cláusula {{clausula_num}} -** A sociedade terá por objeto o exercício das seguintes atividades econômicas: {{objeto_atual}}.
+
+**Cláusula {{clausula_num}} -** A duração da sociedade será por tempo indeterminado e o início de suas atividades ocorreu em {{data_constituicao_extenso}}.
+
+**Cláusula {{clausula_num}} -** O capital social é de {{capital_valor}} ({{capital_valor_extenso}}), dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, ficando assim subscrito e distribuído:
+
+{{#each socios_atuais}}| **{{nome}}** | {{quotas}} quotas | {{valor}} |
+{{/each}}| **Total** | {{capital_quotas}} quotas | {{capital_valor}} |
+
+**Cláusula {{clausula_num}} -** {{O_socio}} não {{responde}} subsidiariamente pelas obrigações sociais.
+
+**Cláusula {{clausula_num}} -** As quotas são indivisíveis e não poderão ser cedidas ou transferidas a terceiros sem o consentimento {{do_socio_g}}, a quem fica assegurado, em igualdade de condições e preço, o direito de preferência para a sua aquisição e, se postas à venda, a cessão delas será formalizada mediante a alteração contratual pertinente.
+
+**Cláusula {{clausula_num}} -** A administração da sociedade ficará a cargo {{administracao_de}}, {{a_ele_cabendo}} a responsabilidade ou representação ativa e passiva da sociedade, em juízo ou fora dele, podendo praticar todos os atos compreendidos no objeto social, sempre no interesse da sociedade, podendo assinar todos e quaisquer documentos{{#unless tem_varios_administradores}} isoladamente{{/unless}} inclusive cheques, ficando vedado o uso da denominação social em negócios estranhos aos fins sociais.
+
+**Cláusula {{clausula_num}} -** {{O_socio}} {{podera}} ter o direito a uma retirada mensal, a título de pró-labore.
+
+**Cláusula {{clausula_num}} -** Ao término de cada exercício social, em 31 de dezembro, {{o_socio_administrador}} {{prestara_adm}} contas justificadas da administração, até o quarto mês seguinte, procedendo à elaboração do balanço patrimonial e do balanço do resultado econômico, cabendo {{ao_socio_g}}, na proporção de suas quotas, os lucros ou perdas apurados, podendo ainda o lucro ser incorporado ao capital.
+
+**Parágrafo único:** A sociedade poderá levantar demonstrativos contábeis antes do término de cada exercício social e os resultados devidamente demonstrados e apurados terão destinação determinada {{pelo_socio_g}}.
+
+**Cláusula {{clausula_num}} -** A morte {{morte_de}} não acarretará necessariamente a dissolução da sociedade, neste caso as quotas serão transferidas em partes iguais aos herdeiros.
+
+**Cláusula {{clausula_num}} -** {{O_administrador}} {{declara_adm}}, sob as penas da lei, que {{nao_esta_impedido_adm}} de exercer a administração da sociedade, por lei especial, ou em virtude de condenação criminal, ou por se encontrar sob os efeitos dela, a pena que vede, ainda que temporariamente, o acesso a cargos públicos ou por crime falimentar, de prevaricação, peita ou suborno, concussão, peculato ou contra a economia popular, contra o sistema financeiro nacional, contra normas de defesa da concorrência, contra as relações de consumo, fé pública ou a propriedade.
+
+**Cláusula {{clausula_num}} -** Fica eleito o foro da comarca de {{foro_comarca}}/{{foro_uf}}, com exclusão de qualquer outro por mais privilegiado que seja para dirimir dúvidas, questões ou ações originárias deste instrumento.
+
+E, por {{estarem_justos}}, {{assinam}} o presente instrumento em {{vias}}.
+
+{{assinatura_cidade}}, {{assinatura_data}}.
+
+{{#each assinantes}}_________________________________________
+{{nome}}
+
+{{/each}}`;
+const MODELO_CONSTITUICAO=`**CONTRATO SOCIAL DE CONSTITUIÇÃO DE SOCIEDADE LTDA.**
+
+**“{{razao_social}}”**
+
+{{#each socios}}{{qualificacao_completa}}{{#unless @ultimo}}{{#if @penultimo}} e {{/if}}{{#unless @penultimo}}, {{/unless}}{{/unless}}{{/each}}.
+
+{{Os_socios}} acima {{qualificados_g}} {{resolve}}, de comum acordo, constituir uma sociedade empresária limitada{{#unless tem_varios_socios}} unipessoal{{/unless}}, que se regerá pelas cláusulas e condições seguintes e, nos casos omissos, pela legislação aplicável:
+
+**Cláusula {{clausula_num}} -** A sociedade girará sob a denominação social de **{{razao_social}}**{{#if nome_fantasia}}, utilizando o nome fantasia **{{nome_fantasia}}**{{/if}}.
+
+**Cláusula {{clausula_num}} -** A sede da sociedade será na {{sede_completa}}.
+
+**Cláusula {{clausula_num}} -** A sociedade terá por objeto o exercício das seguintes atividades econômicas: {{objeto_atual}}.
+
+**Cláusula {{clausula_num}} -** A duração da sociedade será por tempo indeterminado e o início de suas atividades será a partir de {{data_inicio_extenso}}.
+
+**Cláusula {{clausula_num}} -** O capital social é de {{capital_valor}} ({{capital_valor_extenso}}), dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, ficando assim subscrito e distribuído:
+
+| SÓCIO | Nº DE QUOTAS | VALOR | PERCENTUAL |
+{{#each socios_atuais}}| {{nome}} | {{quotas}} | {{valor}} | {{percentual}} |
+{{/each}}| TOTAL | {{capital_quotas}} | {{capital_valor}} | 100% |
+
+**Cláusula {{clausula_num}} -** A responsabilidade {{de_cada_socio}} é restrita ao valor de suas quotas{{#if tem_varios_socios_atuais}}, mas todos respondem solidariamente pela integralização do capital social{{/if}}.
+
+**Parágrafo único:** {{O_socio}} não {{responde}} subsidiariamente pelas obrigações sociais.
+
+**Cláusula {{clausula_num}} -** As quotas são indivisíveis e não poderão ser cedidas ou transferidas a terceiros sem o consentimento {{do_socio_g}}, a quem fica assegurado, em igualdade de condições e preço, o direito de preferência para a sua aquisição e, se postas à venda, a cessão delas será formalizada mediante a alteração contratual pertinente.
+
+**Cláusula {{clausula_num}} -** A administração da sociedade ficará a cargo {{administracao_de}}, {{a_ele_cabendo}} a responsabilidade ou representação ativa e passiva da sociedade, em juízo ou fora dele, podendo praticar todos os atos compreendidos no objeto social, sempre no interesse da sociedade, podendo assinar todos e quaisquer documentos{{#unless tem_varios_administradores}} isoladamente{{/unless}} inclusive cheques, ficando vedado o uso da denominação social em negócios estranhos aos fins sociais.
+
+**Cláusula {{clausula_num}} -** {{O_socio}} {{podera}} ter o direito a uma retirada mensal, a título de pró-labore.
+
+**Cláusula {{clausula_num}} -** Ao término de cada exercício social, em 31 de dezembro, {{o_socio_administrador}} {{prestara_adm}} contas justificadas da administração, até o quarto mês seguinte, procedendo à elaboração do balanço patrimonial e do balanço do resultado econômico, cabendo {{ao_socio_g}}, na proporção de suas quotas, os lucros ou perdas apurados, podendo ainda o lucro ser incorporado ao capital.
+
+**Parágrafo único:** A sociedade poderá levantar demonstrativos contábeis antes do término de cada exercício social e os resultados devidamente demonstrados e apurados terão destinação determinada {{pelo_socio_g}}.
+
+**Cláusula {{clausula_num}} -** A morte {{morte_de}} não acarretará necessariamente a dissolução da sociedade, neste caso as quotas serão transferidas em partes iguais aos herdeiros.
+
+**Cláusula {{clausula_num}} -** {{O_administrador}} {{declara_adm}}, sob as penas da lei, que {{nao_esta_impedido_adm}} de exercer a administração da sociedade, por lei especial, ou em virtude de condenação criminal, ou por se encontrar sob os efeitos dela, a pena que vede, ainda que temporariamente, o acesso a cargos públicos ou por crime falimentar, de prevaricação, peita ou suborno, concussão, peculato ou contra a economia popular, contra o sistema financeiro nacional, contra normas de defesa da concorrência, contra as relações de consumo, fé pública ou a propriedade.
+
+**Cláusula {{clausula_num}} -** Fica eleito o foro da comarca de {{foro_comarca}}/{{foro_uf}}, com exclusão de qualquer outro por mais privilegiado que seja para dirimir dúvidas, questões ou ações originárias deste instrumento.
+
+E, por {{estarem_justos}}, {{assinam}} o presente instrumento em {{vias}}.
 
 {{assinatura_cidade}}, {{assinatura_data}}.
 
@@ -3231,7 +3391,11 @@ E, por estarem justos e contratados, {{assinam}} o presente instrumento em 3 (tr
 
 {{/each}}`;
 // [nome, tipo, corpo, nomes antigos] — nome antigo é renomeado no navegador de quem já tinha (não duplica)
-const MODELOS_MAXIMOS=[['Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS','Alteração Contratual',MODELO_ALT_CONSOLIDACAO,['Alteração e Consolidação (padrão MAXIMOS)']]];
+const MODELOS_MAXIMOS=[
+  ['Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS','Alteração Contratual',MODELO_ALT_CONSOLIDACAO,['Alteração e Consolidação (padrão MAXIMOS)']],
+  ['Alteração de Dados (denominação, sede, objeto) e Consolidação — padrão MAXIMOS','Alteração Contratual',MODELO_ALT_DADOS,[]],
+  ['Constituição de Sociedade Ltda. — padrão MAXIMOS','Constituição',MODELO_CONSTITUICAO,[]]
+];
 // quem já usa o sistema recebe os modelos do escritório sem precisar clicar em nada (e a versão nova, se mudou)
 // só mexe na lista recebida e diz se mudou; quem grava é o init (o autoteste usa listas de mentira sem tocar no navegador)
 function garantirModelosMaximos(lista){
@@ -3442,7 +3606,7 @@ function autoteste(){
 
   linhas.push('— Data por extenso —');
   v('2026-06-22 → 22 de junho de 2026',dataPorExtenso('2026-06-22')==='22 de junho de 2026');
-  v('2026-01-01 → 1 de janeiro de 2026',dataPorExtenso('2026-01-01')==='1 de janeiro de 2026');
+  v('2026-01-01 → 1º de janeiro de 2026 (dia 1 é ordinal)',dataPorExtenso('2026-01-01')==='1º de janeiro de 2026');
   v('vazio → string vazia',dataPorExtenso('')==='');
 
   linhas.push('— Template: variáveis —');
@@ -3733,8 +3897,65 @@ function autoteste(){
   v('tabela importada é tabela; linha e nome em parágrafos separados viram 1 assinatura',bt.map(b=>b.tipo).join()==='paragrafo,tabela,assinatura'&&bt[2].linhas[1][0].t==='FULANA');
   v('"CNPJ nº ..." em negrito e maiúsculas conta como título',estruturarTexto('**CNPJ nº 11.222.333/0001-44**')[0].tipo==='titulo');
   v('CNAE com código a partir da Receita',mapearDadosCnpj({cnae_fiscal:4530703,cnae_fiscal_descricao:'Comércio a varejo de peças',cnaes_secundarios:[{codigo:0,descricao:''}]}).empresa.objeto_social==='45.30-7-03 - Comércio a varejo de peças');
-  v('nome antigo do modelo é renomeado (sem duplicar e sem perder a edição)',(()=>{const l=[{nome:'Alteração e Consolidação (padrão MAXIMOS)',corpo:'meu texto',editado:true}];const mudou=garantirModelosMaximos(l);return mudou&&l.length===1&&l[0].nome==='Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'&&l[0].corpo==='meu texto';})());
-  v('modelo do escritório entra sozinho p/ quem já tem modelos, sem apagar editado',(()=>{const l1=[{nome:'Meu',corpo:'x'},{nome:MODELOS_MAXIMOS[0][0],corpo:'editado à mão',editado:true}];const m1=garantirModelosMaximos(l1);const l2=[{nome:'Meu',corpo:'x'}];const m2=garantirModelosMaximos(l2);return !m1&&l1[1].corpo==='editado à mão'&&m2&&l2.length===2&&l2[1].corpo===MODELO_ALT_CONSOLIDACAO;})());
+  v('os 3 modelos do escritório continuam registrados (QSA, dados e constituição)',MODELOS_MAXIMOS.length===3&&MODELOS_MAXIMOS.map(m=>m[2]).join('~')===[MODELO_ALT_CONSOLIDACAO,MODELO_ALT_DADOS,MODELO_CONSTITUICAO].join('~')&&MODELOS_MAXIMOS[2][1]==='Constituição');
+  v('nome antigo do modelo é renomeado (sem duplicar e sem perder a edição)',(()=>{const l=[{nome:'Alteração e Consolidação (padrão MAXIMOS)',corpo:'meu texto',editado:true}];const mudou=garantirModelosMaximos(l);return mudou&&l.length===MODELOS_MAXIMOS.length&&l[0].nome==='Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'&&l[0].corpo==='meu texto';})());
+  v('modelo do escritório entra sozinho p/ quem já tem modelos, sem apagar editado',(()=>{const l1=[{nome:'Meu',corpo:'x'}].concat(MODELOS_MAXIMOS.map(([nome,tipo,corpo])=>({nome,tipo,corpo})));l1[1].corpo='editado à mão';l1[1].editado=true;const m1=garantirModelosMaximos(l1);const l2=[{nome:'Meu',corpo:'x'}];const m2=garantirModelosMaximos(l2);return !m1&&l1[1].corpo==='editado à mão'&&m2&&l2.length===1+MODELOS_MAXIMOS.length&&l2[1].corpo===MODELO_ALT_CONSOLIDACAO&&l2[2].corpo===MODELO_ALT_DADOS;})());
+
+  linhas.push('— Padrão MAXIMOS: alteração de dados, sócio único (dados fictícios) —');
+  estado=estadoVazio();
+  estado.empresa={razao_social:'BETA COMÉRCIO LTDA',cnpj:'11.222.333/0001-44',nire:'35200000002',endereco:'Rua 2, nº 20',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-000',data_constituicao:'09/03/2022',objeto_social:'Comércio de peças e manutenção mecânica'};
+  estado.socios=[{nome:'MARCOS TESTE',nacionalidade:'brasileiro',profissao:'empresário',estado_civil:'solteiro',rg:'1.234',orgao_emissor:'SSP/SP',cpf:'111.111.111-11',endereco:'Rua A, nº 1',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-001',quotas:'300000'}];
+  estado.capital={valor:'300.000,00',quotas:'300000'};
+  estado.administracao={tipo:'socio_0'};
+  estado.alteracoes={alterou_razao_social:true,rs_nova:'GAMA DISTRIBUIDORA LTDA',alterou_endereco:true,end_novo:'Rua 3, nº 30, Bairro Industrial, na cidade de Mairinque, estado de São Paulo, CEP 18121-336',alterou_atividade:true,ativ_novo:'Distribuição e comércio atacadista de produtos odontológicos'};
+  estado.foro={comarca:'Mairinque',uf:'SP'};estado.assinatura={cidade:'Mairinque',data:'2026-09-15',uf:'SP',vias:'1'};
+  const cd=montarContexto();
+  v('sócio único: "Único sócio ... resolve"',cd.Unicos_socios==='Único sócio'&&cd.resolve==='resolve');
+  v('vias: 1 é via única, vazio assume 3, 2 sai por extenso',cd.vias==='via única'&&viasPorExtenso('')==='3 (três) vias de igual teor e forma'&&viasPorExtenso(2)==='2 (duas) vias de igual teor e forma');
+  v('"por estar justo e contratado" com um só assinante',cd.estarem_justos==='estar justo e contratado'&&cd.assinam==='assina');
+  v('administração no singular masculino: "a ele cabendo"',cd.a_ele_cabendo==='a ele cabendo'&&cd.administracao_de==='do sócio **MARCOS TESTE**');
+  const txtAd=renderTemplate(MODELO_ALT_DADOS,cd);
+  const blAd=estruturarTexto(txtAd);
+  v('modelo de dados: alteração numera as cláusulas e a consolidação recomeça na 1ª',/\*\*Cláusula 1ª -\*\* A sociedade girará sob a denominação social de \*\*GAMA DISTRIBUIDORA LTDA\*\*/.test(txtAd)&&/\*\*Cláusula 3ª -\*\* A sociedade terá por objeto[^]*?\*\*CONSOLIDAÇÃO\*\*\s*\n\s*\*\*Cláusula 1ª -\*\*/.test(txtAd));
+  v('modelo de dados: objeto em prosa (o novo objeto, na alteração e na consolidação), sem lista de CNAE',txtAd.split('atividades econômicas: Distribuição e comércio atacadista de produtos odontológicos.').length===3&&!/\*\*CNAE:\*\*/.test(txtAd));
+  v('modelo de dados: 1 tabela de quotas, 3 colunas, sócio + total',(()=>{const tb=blAd.filter(b=>b.tipo==='tabela');return tb.length===1&&tb[0].linhas.length===2&&tb[0].linhas.every(l=>l.length===3);})());
+  v('modelo de dados: fecha em via única, com 1 assinatura',/por estar justo e contratado, assina o presente instrumento em via única\./.test(txtAd)&&blAd.filter(b=>b.tipo==='assinatura').length===1);
+  v('modelo de dados: nenhum marcador sobrando e nada de undefined',!/\{\{|\}\}|undefined/.test(txtAd));
+  v('campo de vias vazio mantém as 3 vias do modelo de QSA',(()=>{estado.assinatura.vias='';const c=montarContexto();return /assina o presente instrumento em 3 \(três\) vias de igual teor e forma\./.test(renderTemplate(MODELO_ALT_CONSOLIDACAO,c));})());
+
+  linhas.push('— Padrão MAXIMOS: constituição (dados fictícios) —');
+  estado=estadoVazio();
+  estado.empresa={razao_social:'SILVA & SOUZA COMÉRCIO LTDA',nome_fantasia:'CASA SILVA',endereco:'Rua Oito, nº 550',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-000',data_constituicao:'01/10/2026',objeto_social:'Comércio varejista de produtos alimentícios em geral'};
+  estado.socios=[
+    {nome:'JOÃO TESTE',nacionalidade:'brasileiro',profissao:'empresário',estado_civil:'casado',regime_bens:'comunhão parcial de bens',rg:'12.345',orgao_emissor:'SSP/SP',cpf:'123.456.789-00',endereco:'Rua das Flores, nº 100',cidade:'Rio Claro',estado:'SP',cep:'13500-100',quotas:'30000'},
+    {nome:'MARIA TESTE',nacionalidade:'brasileira',profissao:'contadora',estado_civil:'solteira',rg:'98.765',orgao_emissor:'SSP/SP',cpf:'987.654.321-00',endereco:'Avenida Brasil, nº 250',cidade:'Rio Claro',estado:'SP',cep:'13501-000',quotas:'20000'}];
+  estado.capital={valor:'50.000,00',quotas:'50000'};
+  estado.administracao={tipo:'todos',terceiro:{}};
+  estado.foro={comarca:'Rio Claro',uf:'SP'};estado.assinatura={cidade:'Rio Claro',data:'2026-09-29',uf:'SP',vias:''};
+  const cc=montarContexto();
+  v('constituição: "Os sócios acima qualificados" e "de cada sócio"',cc.Os_socios==='Os sócios'&&cc.qualificados_g==='qualificados'&&cc.de_cada_socio==='de cada sócio');
+  v('constituição: início das atividades pela data do contrato',cc.data_inicio_extenso==='1º de outubro de 2026');
+  const txtCt=renderTemplate(MODELO_CONSTITUICAO,cc);
+  const blCt=estruturarTexto(txtCt);
+  v('constituição: abre constituindo a sociedade e numera até a 13ª cláusula',/Os sócios acima qualificados resolvem, de comum acordo, constituir uma sociedade empresária limitada,/.test(txtCt)&&/\*\*Cláusula 13ª -\*\* Fica eleito o foro/.test(txtCt)&&!/Cláusula 14ª/.test(txtCt));
+  v('constituição: tabela de quotas com cabeçalho, 2 sócios e total 100%',(()=>{const tb=blCt.filter(b=>b.tipo==='tabela');return tb.length===1&&tb[0].linhas.length===4&&tb[0].linhas.every(l=>l.length===4)&&tb[0].linhas[3][3][0].t==='100%';})());
+  v('constituição: responsabilidade restrita + solidária, e o parágrafo do escritório',/A responsabilidade de cada sócio é restrita ao valor de suas quotas, mas todos respondem solidariamente pela integralização do capital social\./.test(txtCt)&&/\*\*Parágrafo único:\*\* Os sócios não respondem subsidiariamente pelas obrigações sociais\./.test(txtCt));
+  v('constituição: 2 assinaturas, 3 vias e nenhum marcador sobrando',blCt.filter(b=>b.tipo==='assinatura').length===2&&/assinam o presente instrumento em 3 \(três\) vias de igual teor e forma\./.test(txtCt)&&!/\{\{|\}\}|undefined/.test(txtCt));
+  v('constituição de um sócio só: "sociedade empresária limitada unipessoal" e sem solidariedade',(()=>{estado.socios=[estado.socios[0]];estado.capital={valor:'30.000,00',quotas:'30000'};estado.administracao={tipo:'socio_0',terceiro:{}};estado.empresa.data_constituicao='';const c=montarContexto();const x=renderTemplate(MODELO_CONSTITUICAO,c);return c.Os_socios==='O sócio'&&c.de_cada_socio==='do sócio'&&/constituir uma sociedade empresária limitada unipessoal,/.test(x)&&!/respondem solidariamente/.test(x)&&c.data_inicio_extenso==='29 de setembro de 2026';})());
+
+  linhas.push('— Valor de cada quota (campo digitável) —');
+  v('R$ 100.000,00 em quotas de R$ 1,00 → 100.000 quotas',(()=>{const r=quotasPorValorDaQuota('100.000,00','1,00');return r.quotas===100000&&r.exato;})());
+  v('quota de R$ 2,50 → 40.000 quotas',(()=>{const r=quotasPorValorDaQuota('100.000,00','2,50');return r.quotas===40000&&r.exato;})());
+  v('quota de R$ 0,01 → 10.000.000 quotas',quotasPorValorDaQuota('100.000,00','0,01').quotas===10000000);
+  v('quota que não divide exato avisa (R$ 3,00 em R$ 100.000,00)',(()=>{const r=quotasPorValorDaQuota('100.000,00','3,00');return r.quotas===33333&&!r.exato;})());
+  v('sobra acima de meia quota arredonda para cima (R$ 0,60 em R$ 1.000,00 → 1.667)',(()=>{const r=quotasPorValorDaQuota('1.000,00','0,60');return r.quotas===1667&&!r.exato;})());
+  v('campo do valor da quota é digitável (no navegador)',!el('capital_valorquota').readOnly&&!el('capital_valorquota').disabled);
+  v('sem capital ou sem valor da quota não calcula nada',quotasPorValorDaQuota('','1,00').quotas===0&&quotasPorValorDaQuota('100.000,00','').quotas===0&&quotasPorValorDaQuota('100.000,00','0').quotas===0);
+  v('aceita o valor já formatado (R$ 1,00)',quotasPorValorDaQuota('R$ 100.000,00','R$ 1,00').quotas===100000);
+  v('conferência: 100.000 quotas de R$ 1,00 fecham o capital',(()=>{const c=conferirValorQuota('100.000,00','100000');return c.ok&&c.valorQuota===1&&c.total===100000;})());
+  v('conferência: 33.333 quotas não fecham R$ 100.000,00',(()=>{const c=conferirValorQuota('100.000,00','33333');return !c.ok&&c.valorQuota===3&&c.total===99999;})());
+  v('conferência: 3 quotas em R$ 10.000,00 não fecham (arredondamento de centavo)',(()=>{const c=conferirValorQuota('10.000,00','3');return !c.ok&&c.valorQuota===3333.33&&c.total===9999.99;})());
+  v('conferência sem dados não reclama',conferirValorQuota('','100').ok&&conferirValorQuota('100.000,00','').ok);
 
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
