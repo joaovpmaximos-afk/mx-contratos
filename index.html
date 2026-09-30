@@ -3565,17 +3565,24 @@ _______________________________________
     ['Distrato Social (exemplo)','Distrato Social',distrato],
     ['Consolidação Contratual (exemplo)','Consolidação',consolidacao],
     ['Transformação (exemplo)','Transformação Empresarial',transformacao],
-    ['Procuração (exemplo)','Outros',procuracao],
-    MODELOS_MAXIMOS[0]
+    ['Procuração (exemplo)','Outros',procuracao]
   ];
-  let add=0,upd=0;
-  exemplos.forEach((ex,i)=>{
-    const existente=modelos.find(m=>m.nome===ex[0]);
-    if(existente){if(existente.corpo!==ex[2]||existente.tipo!==ex[1]){existente.corpo=ex[2];existente.tipo=ex[1];upd++;}}
-    else{modelos.push({id:'m'+(Date.now()+i),nome:ex[0],tipo:ex[1],corpo:ex[2]});add++;}
-  });
+  const r=semearExemplos(modelos,exemplos);
   gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();
-  toast('Modelos de exemplo — '+add+' adicionados, '+upd+' atualizados');
+  toast('Modelos de exemplo — '+r.add+' adicionados, '+r.upd+' atualizados');
+}
+// Semeadura da lista de modelos (pura: só mexe na lista recebida; quem grava é quem chamou).
+// Já falhou: no navegador novo a semente trazia só o 1º modelo do escritório, e os outros dois
+// só apareciam no segundo carregamento — por isso ela termina garantindo todos.
+function semearExemplos(lista,exemplos){
+  let add=0,upd=0;
+  (exemplos||[]).forEach((ex,i)=>{
+    const existente=lista.find(m=>m.nome===ex[0]);
+    if(existente){if(existente.corpo!==ex[2]||existente.tipo!==ex[1]){existente.corpo=ex[2];existente.tipo=ex[1];upd++;}}
+    else{lista.push({id:'m'+(Date.now()+i),nome:ex[0],tipo:ex[1],corpo:ex[2]});add++;}
+  });
+  if(garantirModelosMaximos(lista))add++;
+  return {add,upd};
 }
 
 /* =========================================================================
@@ -3974,6 +3981,23 @@ function autoteste(){
   v('só com exemplo, usa o exemplo',modeloDaOperacao([{id:'a',nome:'Distrato Social (exemplo)',tipo:'Distrato Social'}],'Distrato Social','').id==='a');
   v('operação sem tipo (modelo livre) não escolhe nada, nem modelo sem tipo',modeloDaOperacao([{id:'a',nome:'X',tipo:'Constituição'}],'','')===null&&modeloDaOperacao([{id:'b',nome:'Meu modelo',tipo:''}],'','')===null&&modeloDaOperacao([],'Constituição','')===null);
   v('toda operação aponta para um modelo do escritório que existe, com o mesmo tipo',OPERACOES.filter(o=>o.modelo).length===4&&OPERACOES.filter(o=>o.modelo).every(o=>MODELOS_MAXIMOS.some(m=>m[0]===o.modelo&&m[1]===o.tipo)));
+
+  linhas.push('— Modelos que o navegador novo recebe —');
+  v('navegador novo recebe os exemplos E os 3 modelos do escritório',(()=>{
+    const lista=[];const r=semearExemplos(lista,[['Constituição (exemplo)','Constituição','corpo do exemplo']]);
+    return r.add>=2&&lista.some(m=>m.nome==='Constituição (exemplo)')&&MODELOS_MAXIMOS.every(x=>lista.some(m=>m.nome===x[0]&&m.corpo===x[2]));})());
+  v('na 1ª abertura a operação Constituição já acha o modelo do escritório',(()=>{
+    const lista=[];semearExemplos(lista,[['Constituição (exemplo)','Constituição','corpo do exemplo']]);
+    const op=OPERACOES.find(o=>o.id==='constituicao');
+    return modeloDaOperacao(lista,op.tipo,op.modelo).nome==='Constituição de Sociedade Ltda. — padrão MAXIMOS';})());
+  v('semear de novo não duplica nem apaga o que o usuário editou',(()=>{
+    const lista=[];const ex=[['Constituição (exemplo)','Constituição','corpo do exemplo']];
+    semearExemplos(lista,ex);const antes=lista.length;
+    lista.find(m=>m.nome===MODELOS_MAXIMOS[0][0]).editado=true;
+    lista.find(m=>m.nome===MODELOS_MAXIMOS[0][0]).corpo='meu texto';
+    semearExemplos(lista,ex);
+    return lista.length===antes&&lista.find(m=>m.nome===MODELOS_MAXIMOS[0][0]).corpo==='meu texto';})());
+  v('semeadura não grava nada sozinha (quem grava é o init)',semearExemplos([],[]).add>=1);
 
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
@@ -4814,7 +4838,9 @@ function init(){
   montarNav();
   montarConfigIA();
   preencherFormularios();
-  if(!modelos.length)inserirModelosExemplo();else{if(garantirModelosMaximos(modelos))gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();}
+  if(!modelos.length)inserirModelosExemplo();
+  if(garantirModelosMaximos(modelos))gravar(CHAVE_MODELOS,modelos);
+  montarListaModelos();atualizarSeletorModelos();
   if(el('sel-papel'))el('sel-papel').value=papelPadrao(lerPapelSalvo());
   try{if(localStorage.getItem('mxcontratos_lateral')==='min')document.body.classList.add('lateral-min');}catch(e){}
   aplicarTema(temaAtual());aplicarUsuario();
