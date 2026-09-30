@@ -3957,6 +3957,24 @@ function autoteste(){
   v('conferência: 3 quotas em R$ 10.000,00 não fecham (arredondamento de centavo)',(()=>{const c=conferirValorQuota('10.000,00','3');return !c.ok&&c.valorQuota===3333.33&&c.total===9999.99;})());
   v('conferência sem dados não reclama',conferirValorQuota('','100').ok&&conferirValorQuota('100.000,00','').ok);
 
+  linhas.push('— Modelo que abre com cada operação —');
+  v('operação escolhe o modelo do escritório, não o exemplo de mesmo tipo',(()=>{
+    const lista=[{id:'x',nome:'Constituição (exemplo)',tipo:'Constituição'},{id:'y',nome:'Constituição de Sociedade Ltda. — padrão MAXIMOS',tipo:'Constituição'}];
+    const op=OPERACOES.find(o=>o.id==='constituicao');
+    return modeloDaOperacao(lista,op.tipo,op.modelo).id==='y';})());
+  v('entrada/saída de sócio abre o modelo de QSA; alteração de dados abre o outro',(()=>{
+    const lista=[{id:'a',nome:'Alteração contratual (exemplo)',tipo:'Alteração Contratual'},
+      {id:'b',nome:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS',tipo:'Alteração Contratual'},
+      {id:'c',nome:'Alteração de Dados (denominação, sede, objeto) e Consolidação — padrão MAXIMOS',tipo:'Alteração Contratual'}];
+    const qsa=OPERACOES.find(o=>o.id==='socios'),dados=OPERACOES.find(o=>o.id==='alteracao');
+    return modeloDaOperacao(lista,qsa.tipo,qsa.modelo).id==='b'&&modeloDaOperacao(lista,dados.tipo,dados.modelo).id==='c';})());
+  v('sem o modelo indicado, qualquer modelo do escritório do tipo vence o exemplo',(()=>{
+    const lista=[{id:'a',nome:'Alteração contratual (exemplo)',tipo:'Alteração Contratual'},{id:'b',nome:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS',tipo:'Alteração Contratual'}];
+    return modeloDaOperacao(lista,'Alteração Contratual','Modelo que não existe').id==='b';})());
+  v('só com exemplo, usa o exemplo',modeloDaOperacao([{id:'a',nome:'Distrato Social (exemplo)',tipo:'Distrato Social'}],'Distrato Social','').id==='a');
+  v('operação sem tipo (modelo livre) não escolhe nada, nem modelo sem tipo',modeloDaOperacao([{id:'a',nome:'X',tipo:'Constituição'}],'','')===null&&modeloDaOperacao([{id:'b',nome:'Meu modelo',tipo:''}],'','')===null&&modeloDaOperacao([],'Constituição','')===null);
+  v('toda operação aponta para um modelo do escritório que existe, com o mesmo tipo',OPERACOES.filter(o=>o.modelo).length===4&&OPERACOES.filter(o=>o.modelo).every(o=>MODELOS_MAXIMOS.some(m=>m[0]===o.modelo&&m[1]===o.tipo)));
+
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
   el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
@@ -4083,14 +4101,22 @@ const ETAPAS=[
 const TODAS_ETAPAS=ETAPAS.map(e=>e.id);
 const SEM_ALTERACOES=TODAS_ETAPAS.filter(e=>e!=='alteracoes');
 const OPERACOES=[
-  {id:'constituicao',ic:'construir',nome:'Constituição',desc:'Criar uma nova sociedade.',tipo:'Constituição',etapas:SEM_ALTERACOES},
-  {id:'alteracao',ic:'alteracoes',nome:'Alteração contratual',desc:'Modificar informações de uma sociedade existente.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS},
-  {id:'socios',ic:'socios',nome:'Entrada / saída de sócio',desc:'Alterar o quadro societário (QSA).',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['saida_socio']},
-  {id:'capital',ic:'capital',nome:'Aumento / redução de capital',desc:'Modificar o capital social e as quotas.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['alterou_capital']},
+  {id:'constituicao',ic:'construir',nome:'Constituição',desc:'Criar uma nova sociedade.',tipo:'Constituição',etapas:SEM_ALTERACOES,modelo:'Constituição de Sociedade Ltda. — padrão MAXIMOS'},
+  {id:'alteracao',ic:'alteracoes',nome:'Alteração contratual',desc:'Modificar informações de uma sociedade existente.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,modelo:'Alteração de Dados (denominação, sede, objeto) e Consolidação — padrão MAXIMOS'},
+  {id:'socios',ic:'socios',nome:'Entrada / saída de sócio',desc:'Alterar o quadro societário (QSA).',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['saida_socio'],modelo:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'},
+  {id:'capital',ic:'capital',nome:'Aumento / redução de capital',desc:'Modificar o capital social e as quotas.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['alterou_capital'],modelo:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'},
   {id:'consolidacao',ic:'modelos',nome:'Consolidação',desc:'Consolidar o contrato social.',tipo:'Consolidação',etapas:SEM_ALTERACOES},
   {id:'distrato',ic:'encerrar',nome:'Distrato',desc:'Encerrar a sociedade.',tipo:'Distrato Social',etapas:SEM_ALTERACOES},
   {id:'livre',ic:'livre',nome:'Modelo livre',desc:'Usar qualquer modelo cadastrado, com todas as etapas.',tipo:'',etapas:TODAS_ETAPAS}
 ];
+// qual modelo abre com a operação: o que ela indica, senão qualquer modelo do escritório do mesmo tipo,
+// senão o primeiro daquele tipo. Sem isso o "Constituição (exemplo)" ganhava do modelo real só por estar antes.
+function modeloDaOperacao(lista,tipo,preferido){
+  const doTipo=(lista||[]).filter(m=>m&&m.tipo===tipo);
+  if(!tipo||!doTipo.length)return null;
+  const oficiais=MODELOS_MAXIMOS.map(x=>x[0]);
+  return doTipo.find(m=>m.nome===preferido)||doTipo.find(m=>oficiais.indexOf(m.nome)>=0)||doTipo[0];
+}
 function operacaoAtual(){return OPERACOES.find(o=>o.id===(estado.operacao||'livre'))||OPERACOES[OPERACOES.length-1];}
 function etapasVisiveis(){return operacaoAtual().etapas;}
 
@@ -4688,10 +4714,9 @@ function escolherOperacao(id){
   estado.alteracoes=estado.alteracoes||{};
   (op.marcar||[]).forEach(f=>{estado.alteracoes[f]=true;});
   gravar(CHAVE_ESTADO,estado);
-  if(op.tipo){
-    const m=modelos.find(x=>x.tipo===op.tipo);
-    if(m&&el('sel-modelo'))el('sel-modelo').value=m.id;
-  }
+  const m=modeloDaOperacao(modelos,op.tipo,op.modelo);
+  if(m){estado.modelo_id=m.id;if(el('sel-modelo'))el('sel-modelo').value=m.id;}
+  gravar(CHAVE_ESTADO,estado);salvarCasoAtivo(); // a operação e o modelo escolhidos ficam gravados no contrato aberto
   preencherFormularios();
   abrirAba(op.etapas.includes('alteracoes')&&id!=='alteracao'?'alteracoes':op.etapas[0]);
   toast(op.nome+': etapas ajustadas para esta operação');
