@@ -492,6 +492,17 @@
   #preview{background:#fff;width:21cm;min-height:29.7cm;max-width:100%;margin:0 auto;padding:2.5cm 3cm;transform-origin:top center;
     font-family:Calibri,Carlito,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.6;color:#111;text-align:justify;
     box-shadow:0 40px 70px -30px rgba(0,0,0,.9)}
+  #preview.com-timbre{position:relative;overflow:hidden}
+  #timbre-logo{text-align:center;margin:0 0 0.8cm}
+  #timbre-logo img{width:16.03cm;max-width:100%;height:auto}
+  #timbre-marca{position:absolute;top:5cm;left:50%;transform:translateX(-50%);width:27.17cm;z-index:0;pointer-events:none}
+  /* o Word aplica "desbotado" (lum bright 70%, contrast -70%) na marca d'agua; no navegador, opacidade */
+  #timbre-marca img{width:100%;height:auto;opacity:.16;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #preview .corpo-doc{position:relative;z-index:1}
+  #folha-timbre{width:100%;border-collapse:collapse}
+  #folha-timbre>tbody>tr>td,#folha-timbre>tfoot>tr>td{padding:0;border:0;vertical-align:top}
+  #timbre-rodape{padding-top:24px;text-align:center;font-size:11px;line-height:1.4;color:#222;font-family:Arial,sans-serif}
+  #timbre-rodape b{font-size:12px}
   #preview p{margin:0 0 12px}
   #preview p.titulo{text-align:center;margin:0 0 6px;font-size:21px;text-decoration:underline}
   #preview p.titulo+p:not(.titulo){margin-top:22px}
@@ -592,6 +603,11 @@
     .estudio{display:block}
     .folha-area{background:none;border:none;padding:0;max-height:none;overflow:visible}
     #preview{box-shadow:none;width:auto;padding:0;min-height:0;transform:none !important}
+    /* o PDF sai com o mesmo papel escolhido para o Word: logo e marca na 1ª página, rodapé em todas */
+    @page{margin:1.5cm 2.2cm 1.6cm}
+    #preview{overflow:visible}
+    #timbre-logo img{width:16.03cm}
+    #timbre-marca{top:2.6cm}
   }
 </style>
 </head>
@@ -944,12 +960,13 @@
         </div>
         <div class="card" id="card-exportar" style="display:none">
           <h2>Entregar</h2>
-          <div class="campo" style="margin-bottom:10px"><label>Papel do Word</label>
-            <select id="sel-papel" title="Papel do Word">
+          <div class="campo" style="margin-bottom:10px"><label>Papel do documento (Word e PDF)</label>
+            <select id="sel-papel" title="Papel do documento" onchange="trocarPapel()">
               <option value="timbrado" selected>Papel timbrado MAXIMOS</option>
               <option value="limpo">Sem timbrado (papel branco)</option>
             </select>
-            <div class="dica">O timbrado é o padrão. Para protocolo na Junta, muitos cartórios preferem o papel branco — dá para trocar aqui a qualquer momento.</div>
+            <div class="dica">O timbrado é o padrão e vale para os dois botões abaixo. Para protocolo na Junta, muitos cartórios preferem o papel branco — dá para trocar aqui a qualquer momento.</div>
+            <div class="check ok" id="aviso-papel" style="margin:10px 0 0"></div>
           </div>
           <div style="display:grid;gap:8px">
             <button class="btn ouro" onclick="baixarWord(event)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M4 20h16"/></svg> Gerar Word (.docx)</button>
@@ -2419,7 +2436,8 @@ function gerarContrato(){
   let texto;
   try{texto=renderTemplate(modelo.corpo,ctx);}catch(e){avisosEl.innerHTML+='<li class="e">Erro ao processar o modelo: '+esc(e.message)+'</li>';return;}
   ultimoTexto=texto;
-  el('preview').innerHTML=textoParaHtml(texto);
+  el('preview').innerHTML='<div class="corpo-doc">'+textoParaHtml(texto)+'</div>';
+  aplicarTimbreNaPrevia();
   aplicarZoom();
   const blocos=estruturarTexto(texto);
   const info=el('info-documento');
@@ -2510,6 +2528,38 @@ function blocosParaHtml(blocos){
   }).join('');
 }
 function textoParaHtml(texto){return blocosParaHtml(estruturarTexto(texto));}
+// A folha da tela é a mesma coisa que sai no PDF (Gerar PDF / Imprimir). Com o papel timbrado escolhido,
+// ela recebe logo e marca d'água na 1ª página e o rodapé do escritório — as imagens vêm do .docx do timbrado.
+async function aplicarTimbreNaPrevia(){
+  const p=el('preview');if(!p)return;
+  const sel=el('sel-papel');
+  const papel=papelPadrao(sel?sel.value:lerPapelSalvo());
+  const corpoAtual=p.querySelector('.corpo-doc');
+  if(corpoAtual&&corpoAtual.parentElement!==p)p.appendChild(corpoAtual); // tira o corpo da tabela do timbre
+  ['folha-timbre','timbre-logo','timbre-marca','timbre-rodape'].forEach(id=>{const n=el(id);if(n)n.remove();});
+  p.classList.toggle('com-timbre',papel==='timbrado');
+  const aviso=el('aviso-papel');
+  if(aviso)aviso.innerHTML=papel==='timbrado'
+    ? svg('check')+'Sai com o <b>papel timbrado MAXIMOS</b> — no Word e no PDF.'
+    : svg('info')+'Sai em <b>papel branco</b>, sem logo nem rodapé — no Word e no PDF.';
+  if(aviso)aviso.className='check '+(papel==='timbrado'?'ok':'w');
+  if(papel!=='timbrado')return;
+  let partes;
+  try{partes=await partesDoTimbrado();}catch(e){if(aviso)aviso.innerHTML=svg('alerta')+'Não consegui ler o papel timbrado: '+esc(e.message||e);return;}
+  if(el('sel-papel')&&papelPadrao(el('sel-papel').value)!=='timbrado')return; // trocou de papel enquanto carregava
+  const corpo=p.querySelector('.corpo-doc');if(!corpo)return;
+  const marca=document.createElement('div');marca.id='timbre-marca';marca.innerHTML='<img alt="" src="'+partes.marca+'">';
+  const rodape='<div id="timbre-rodape">'+partes.rodape.map((l,i)=>i===0?'<b>'+esc(l)+'</b>':esc(l)).join('<br>')+'</div>';
+  const tab=document.createElement('table');tab.id='folha-timbre';
+  tab.innerHTML='<tfoot><tr><td>'+rodape+'</td></tr></tfoot><tbody><tr><td><div id="timbre-logo"><img alt="MAXIMOS" src="'+partes.logo+'"></div></td></tr></tbody>';
+  tab.querySelector('tbody td').appendChild(corpo);
+  p.appendChild(marca);p.appendChild(tab);
+}
+function trocarPapel(){
+  const sel=el('sel-papel');if(!sel)return;
+  try{localStorage.setItem('mxcontratos_papel',papelPadrao(sel.value));}catch(e){}
+  aplicarTimbreNaPrevia();
+}
 function aplicarZoom(){
   const z=el('zoom-preview'),p=el('preview');
   if(!z||!p)return;
@@ -2622,6 +2672,36 @@ async function gerarDocx(texto,papel,titulo,tipoSaida){
     Object.keys(arqs).forEach(k=>zip.file(k,arqs[k]));
   }
   return zip.generateAsync({type:tipoSaida||'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',compression:'DEFLATE'});
+}
+// Peças do papel timbrado (logo, marca d'água e rodapé) lidas do .docx embutido, para a folha da tela e o PDF
+// usarem exatamente as mesmas imagens do Word. A promessa é guardada (não o valor): sem isso, dois cliques
+// seguidos abririam o zip duas vezes — ver licao-cachear-promessa-nao-valor.
+let promessaTimbre=null;
+function partesDoTimbrado(){
+  if(!promessaTimbre)promessaTimbre=(async()=>{
+    const zip=await JSZip.loadAsync(TIMBRADO_DOCX_B64,{base64:true});
+    const lerImagem=async(caminho,tipo)=>'data:'+tipo+';base64,'+await exigirArquivoDoZip(zip,caminho).async('base64');
+    const rodapeXml=await zip.file('word/footer1.xml').async('string');
+    return {
+      logo:await lerImagem('word/media/image1.jpeg','image/jpeg'),
+      marca:await lerImagem('word/media/image2.png','image/png'),
+      rodape:linhasDoRodapeTimbrado(rodapeXml)
+    };
+  })().catch(e=>{promessaTimbre=null;throw e;});
+  return promessaTimbre;
+}
+// peça que falta no timbrado precisa reclamar: em branco, o documento sairia sem logo e ninguém perceberia
+function exigirArquivoDoZip(zip,caminho){
+  const f=zip&&zip.file(caminho);
+  if(!f)throw new Error('papel timbrado sem '+caminho);
+  return f;
+}
+// rodapé do timbrado: um item por parágrafo do footer1.xml, sem linhas vazias
+function linhasDoRodapeTimbrado(xml){
+  const corpo=(String(xml).match(/<w:ftr[^>]*>([^]*)<\/w:ftr>/)||[,String(xml)])[1];
+  return (corpo.match(/<w:p[ >][^]*?<\/w:p>|<w:p\/>/g)||[])
+    .map(p=>decodificarEntidades((p.match(/<w:t(?: [^>]*)?>[^]*?<\/w:t>/g)||[]).map(x=>x.replace(/<[^>]+>/g,'')).join('')).replace(/\s+/g,' ').trim())
+    .filter(Boolean);
 }
 // papel do Word: o timbrado do escritório é o padrão; a escolha de quem usa manda
 const PAPEIS=['timbrado','limpo'];
@@ -3999,6 +4079,17 @@ function autoteste(){
     return lista.length===antes&&lista.find(m=>m.nome===MODELOS_MAXIMOS[0][0]).corpo==='meu texto';})());
   v('semeadura não grava nada sozinha (quem grava é o init)',semearExemplos([],[]).add>=1);
 
+  linhas.push('— Papel timbrado no PDF (peças lidas do .docx) —');
+  v('rodapé do timbrado: um item por parágrafo, sem linhas vazias',(()=>{
+    const xml='<w:ftr><w:p><w:r><w:t>MAXIMOS SOLUÇÕES</w:t></w:r><w:r><w:t xml:space="preserve"> EMPRESARIAIS</w:t></w:r></w:p><w:p/><w:p><w:r><w:t>Rua 8, nº 550 &amp; Centro</w:t></w:r></w:p></w:ftr>';
+    const l=linhasDoRodapeTimbrado(xml);
+    return l.length===2&&l[0]==='MAXIMOS SOLUÇÕES EMPRESARIAIS'&&l[1]==='Rua 8, nº 550 & Centro';})());
+  v('rodapé vazio não vira linha',linhasDoRodapeTimbrado('<w:ftr><w:p/></w:ftr>').length===0);
+  v('peça que falta no timbrado reclama em vez de sair em branco',(()=>{
+    const achou={file:c=>({nome:c})};
+    if(exigirArquivoDoZip(achou,'word/media/image1.jpeg').nome!=='word/media/image1.jpeg')return false;
+    try{exigirArquivoDoZip({file:()=>null},'word/media/image1.jpeg');return false;}catch(e){return /sem word\/media\/image1\.jpeg/.test(e.message);}})());
+
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
   el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
@@ -4025,6 +4116,10 @@ async function autotesteDocx(ok,total,linhas){
       if(papel==='timbrado'){
         v('timbrado: logo e rodapé da MAXIMOS presentes',!!zip.file('word/media/image1.jpeg')&&!!zip.file('word/footer1.xml'));
         v('timbrado: margem superior 1,5 cm',/<w:pgMar[^>]*w:top="851"/.test(doc));
+        const pecas=await partesDoTimbrado();
+        v('timbrado: logo e marca d\'água saem do .docx como imagem',/^data:image\/jpeg;base64,\/9j\//.test(pecas.logo)&&/^data:image\/png;base64,iVBOR/.test(pecas.marca));
+        v('timbrado: rodapé do escritório lido do footer1.xml',pecas.rodape.length>=4&&/MAXIMOS SOLUÇÕES EMPRESARIAIS/.test(pecas.rodape[0])&&pecas.rodape.some(l=>/CNPJ/.test(l)));
+        v('timbrado: a promessa das peças é reaproveitada',(await partesDoTimbrado())===pecas);
       }else{
         const ftr=await zip.file('word/footer1.xml').async('string');
         v('limpo: rodapé "Página X de Y"',/PAGE/.test(ftr)&&/NUMPAGES/.test(ftr));
