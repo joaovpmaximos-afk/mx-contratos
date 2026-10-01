@@ -814,7 +814,7 @@
         <button class="btn primario" onclick="novoModelo()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Novo modelo</button>
         <button class="btn contorno" onclick="document.getElementById('upModelo').click()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5v-11"/><path d="M7.5 13.5 12 9l4.5 4.5"/><path d="M4 4h16"/></svg> Importar modelo (Word .docx ou .txt)</button>
         <input type="file" id="upModelo" accept=".docx,.txt,.text" style="display:none" onchange="carregarModeloArquivo(event)">
-        <button class="btn contorno" onclick="inserirModelosExemplo()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg> Inserir modelos de exemplo</button>
+        <button class="btn contorno" onclick="inserirModelosExemplo()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/></svg> Inserir modelos genéricos de exemplo</button>
       </div>
     </div>
     <div class="card">
@@ -2690,6 +2690,26 @@ function partesDoTimbrado(){
   })().catch(e=>{promessaTimbre=null;throw e;});
   return promessaTimbre;
 }
+// A lista nasce só com os modelos do escritório. Os exemplos genéricos saem de cena, mas quem tiver
+// editado um deles fica com o seu: só sai o que está igualzinho ao exemplo (sem a marca editado).
+function ehModeloExemplo(m){return !!m&&/\(exemplo\)\s*$/.test(String(m.nome||''));}
+function removerModelosExemplo(lista){
+  const fora=[];
+  for(let i=(lista||[]).length-1;i>=0;i--){
+    const m=lista[i];
+    if(ehModeloExemplo(m)&&!m.editado){fora.unshift(m);lista.splice(i,1);}
+  }
+  return fora;
+}
+// contrato que apontava para um modelo que saiu volta a escolher pela operação
+function soltarModelosSumidos(listaCasos,modelosAtuais){
+  let mexeu=0;
+  ((listaCasos&&listaCasos.lista)||[]).forEach(c=>{
+    const id=c&&c.estado&&c.estado.modelo_id;
+    if(id&&!(modelosAtuais||[]).some(m=>m.id===id)){delete c.estado.modelo_id;mexeu++;}
+  });
+  return mexeu;
+}
 // peça que falta no timbrado precisa reclamar: em branco, o documento sairia sem logo e ninguém perceberia
 function exigirArquivoDoZip(zip,caminho){
   const f=zip&&zip.file(caminho);
@@ -2707,6 +2727,8 @@ function linhasDoRodapeTimbrado(xml){
 const PAPEIS=['timbrado','limpo'];
 function papelPadrao(escolhido){return PAPEIS.includes(escolhido)?escolhido:'timbrado';}
 function lerPapelSalvo(){try{return localStorage.getItem('mxcontratos_papel')||'';}catch(e){return '';}}
+function lerBandeira(chave){try{return localStorage.getItem(chave)==='1';}catch(e){return true;}}
+function gravarBandeira(chave){try{localStorage.setItem(chave,'1');}catch(e){}}
 function nomeArquivoContrato(){
   const id=el('sel-modelo').value;const m=modelos.find(x=>x.id===id);
   const base=((m?m.nome+' - ':'')+(estado.empresa.razao_social||'contrato'));
@@ -4090,6 +4112,23 @@ function autoteste(){
     if(exigirArquivoDoZip(achou,'word/media/image1.jpeg').nome!=='word/media/image1.jpeg')return false;
     try{exigirArquivoDoZip({file:()=>null},'word/media/image1.jpeg');return false;}catch(e){return /sem word\/media\/image1\.jpeg/.test(e.message);}})());
 
+  linhas.push('— Lista só com os modelos do escritório —');
+  v('tira os exemplos genéricos e deixa os modelos do escritório',(()=>{
+    const l=[{id:'a',nome:'Constituição (exemplo)'},{id:'b',nome:MODELOS_MAXIMOS[0][0]},{id:'c',nome:'Procuração (exemplo)'},{id:'d',nome:'Meu modelo'}];
+    const fora=removerModelosExemplo(l);
+    return fora.length===2&&fora[0].id==='a'&&fora[1].id==='c'&&l.map(m=>m.id).join()==='b,d';})());
+  v('exemplo editado à mão fica na lista',(()=>{
+    const l=[{id:'a',nome:'Constituição (exemplo)',editado:true},{id:'b',nome:'Distrato Social (exemplo)'}];
+    const fora=removerModelosExemplo(l);
+    return fora.length===1&&fora[0].id==='b'&&l.length===1&&l[0].id==='a';})());
+  v('só conta como exemplo quem termina em "(exemplo)"',ehModeloExemplo({nome:'Distrato Social (exemplo)'})&&ehModeloExemplo({nome:'Alteração (exemplo) '})&&!ehModeloExemplo({nome:'Contrato (exemplo) revisado'})&&!ehModeloExemplo({nome:MODELOS_MAXIMOS[1][0]})&&!ehModeloExemplo(null));
+  v('lista sem exemplos não perde nada',(()=>{const l=[{id:'b',nome:MODELOS_MAXIMOS[0][0]}];return removerModelosExemplo(l).length===0&&l.length===1;})());
+  v('contrato que usava um modelo removido volta a escolher pela operação',(()=>{
+    const cs={ativo:'c1',lista:[{id:'c1',estado:{modelo_id:'a'}},{id:'c2',estado:{modelo_id:'b'}},{id:'c3',estado:{}}]};
+    const mexeu=soltarModelosSumidos(cs,[{id:'b'}]);
+    return mexeu===1&&cs.lista[0].estado.modelo_id===undefined&&cs.lista[1].estado.modelo_id==='b';})());
+  v('nenhum contrato mexido quando todos os modelos continuam lá',soltarModelosSumidos({lista:[{id:'c1',estado:{modelo_id:'b'}}]},[{id:'b'}])===0);
+
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
   el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
@@ -4933,8 +4972,14 @@ function init(){
   montarNav();
   montarConfigIA();
   preencherFormularios();
-  if(!modelos.length)inserirModelosExemplo();
-  if(garantirModelosMaximos(modelos))gravar(CHAVE_MODELOS,modelos);
+  let mexeuModelos=garantirModelosMaximos(modelos);
+  // limpeza única: a equipe pediu a lista só com os modelos do escritório (os exemplos voltam pelo botão)
+  if(!lerBandeira('mxcontratos_sem_exemplos')){
+    const fora=removerModelosExemplo(modelos);
+    if(fora.length){mexeuModelos=true;if(soltarModelosSumidos(casos,modelos))gravar(CHAVE_CASOS,casos);}
+    gravarBandeira('mxcontratos_sem_exemplos');
+  }
+  if(mexeuModelos)gravar(CHAVE_MODELOS,modelos);
   montarListaModelos();atualizarSeletorModelos();
   if(el('sel-papel'))el('sel-papel').value=papelPadrao(lerPapelSalvo());
   try{if(localStorage.getItem('mxcontratos_lateral')==='min')document.body.classList.add('lateral-min');}catch(e){}
