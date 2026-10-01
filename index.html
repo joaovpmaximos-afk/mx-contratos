@@ -1536,6 +1536,10 @@ function contextoLocacao(ctx,pessoas){
   ctx.ao_locador=artigoGrupo(gl,'ao LOCADOR','à LOCADORA','aos LOCADORES','às LOCADORAS');
   ctx.ao_locatario=artigoGrupo(gt,'ao LOCATÁRIO','à LOCATÁRIA','aos LOCATÁRIOS','às LOCATÁRIAS');
   ctx.O_locador=maiuscula1(ctx.o_locador);ctx.O_locatario=maiuscula1(ctx.o_locatario);
+  const gf=p.fiadores.map(generoSocio);
+  ctx.rotulo_locador=artigoGrupo(gl,'LOCADOR','LOCADORA','LOCADORES','LOCADORAS');
+  ctx.rotulo_locatario=artigoGrupo(gt,'LOCATÁRIO','LOCATÁRIA','LOCATÁRIOS','LOCATÁRIAS');
+  ctx.rotulo_fiador=artigoGrupo(gf,'FIADOR','FIADORA','FIADORES','FIADORAS');
   // imóvel
   ctx.imovel_endereco=enderecoImovel(l);
   ctx.imovel_finalidade=(l.imovel_tipo==='comercial')?'comerciais':'residenciais';
@@ -1567,10 +1571,11 @@ function contextoLocacao(ctx,pessoas){
   const cau=num(l.caucao_valor);
   ctx.caucao_valor=cau?moeda(cau):'';ctx.caucao_extenso=cau?numeroPorExtenso(cau):'';
   // quem assina: locador(es), locatário(s) e fiador(es), cada um com o papel embaixo da linha
+  const papelDe=(x,m,f)=>conc(generoSocio(x),m,f);
   ctx.assinantes_locacao=[].concat(
-    p.locadores.map(x=>({nome:x.nome,papel:'LOCADOR'})),
-    p.locatarios.map(x=>({nome:x.nome,papel:'LOCATÁRIO'})),
-    p.fiadores.map(x=>({nome:x.nome,papel:'FIADOR'}))
+    p.locadores.map(x=>({nome:x.nome,papel:papelDe(x,'LOCADOR','LOCADORA')})),
+    p.locatarios.map(x=>({nome:x.nome,papel:papelDe(x,'LOCATÁRIO','LOCATÁRIA')})),
+    p.fiadores.map(x=>({nome:x.nome,papel:papelDe(x,'FIADOR','FIADORA')}))
   );
 }
 function contextoMaximos(ctx,socios){
@@ -3708,11 +3713,11 @@ E, por {{estarem_justos}}, {{assinam}} o presente instrumento em {{vias}}.
 {{/each}}`;
 const MODELO_LOCACAO=`**CONTRATO DE LOCAÇÃO DE IMÓVEL {{imovel_finalidade_titulo}}**
 
-**LOCADOR:** {{locador_qualificacao}}.
+**{{rotulo_locador}}:** {{locador_qualificacao}}.
 
-**LOCATÁRIO:** {{locatario_qualificacao}}.
+**{{rotulo_locatario}}:** {{locatario_qualificacao}}.
 
-{{#if tem_fiador}}**FIADOR:** {{fiador_qualificacao}}.
+{{#if tem_fiador}}**{{rotulo_fiador}}:** {{fiador_qualificacao}}.
 
 {{/if}}As partes acima qualificadas têm entre si justo e contratado o presente contrato de locação, que se regerá pela Lei nº 8.245/1991 e pelas cláusulas e condições seguintes:
 
@@ -4430,7 +4435,8 @@ function autoteste(){
   v('qualificação de uma pessoa só não troca a última vírgula por "e"',/estado de São Paulo, CEP 13500-000\.?$/.test(cl.locador_qualificacao)&&cl.locador_qualificacao.indexOf(' e CEP')<0);
   v('duas pessoas no mesmo papel saem ligadas por "e"',(()=>{const g=estado.socios;estado.socios=g.concat([{nome:'OUTRO DONO',papel:'locador',cpf:'444.444.444-44'}]);const c=montarContexto();estado.socios=g;return / e \*\*OUTRO DONO\*\*/.test(c.locador_qualificacao);})());
   v('locação: endereço do imóvel montado',cl.imovel_endereco==='Rua C, nº 30, apartamento 12, Jardim Claret, na cidade de Rio Claro, estado de São Paulo, CEP 13503-000');
-  v('locação: assinam locador e locatária, cada um com o papel',cl.assinantes_locacao.map(a=>a.nome+'/'+a.papel).join('|')==='CARLOS LOCADOR TESTE/LOCADOR|JULIA LOCATARIA TESTE/LOCATÁRIO');
+  v('locação: assinam locador e locatária, cada um com o papel no gênero certo',cl.assinantes_locacao.map(a=>a.nome+'/'+a.papel).join('|')==='CARLOS LOCADOR TESTE/LOCADOR|JULIA LOCATARIA TESTE/LOCATÁRIA');
+  v('locação: rótulos do cabeçalho acompanham o gênero',cl.rotulo_locador==='LOCADOR'&&cl.rotulo_locatario==='LOCATÁRIA');
   const txtLoc=renderTemplate(MODELO_LOCACAO,cl);
   const blLoc=estruturarTexto(txtLoc);
   v('locação: título residencial e cláusulas numeradas até a 11ª',/\*\*CONTRATO DE LOCAÇÃO DE IMÓVEL RESIDENCIAL\*\*/.test(txtLoc)&&/\*\*Cláusula 11ª — DO FORO\.\*\*/.test(txtLoc)&&!/Cláusula 12ª/.test(txtLoc));
@@ -4442,7 +4448,7 @@ function autoteste(){
     estado.socios.push({nome:'MARIA FIADORA TESTE',papel:'fiador',nacionalidade:'brasileira',profissao:'comerciante',estado_civil:'viúva',cpf:'333.333.333-33',endereco:'Rua D, nº 40',cidade:'Rio Claro',estado:'SP'});
     estado.locacao.garantia='fiador';
     const c=montarContexto();const x=renderTemplate(MODELO_LOCACAO,c);
-    return c.tem_fiador&&/\*\*FIADOR:\*\* \*\*MARIA FIADORA TESTE\*\*/.test(x)&&/fiador e principal pagador \*\*MARIA FIADORA TESTE\*\*/.test(x)&&estruturarTexto(x).filter(b=>b.tipo==='assinatura').length===5;})());
+    return c.tem_fiador&&c.rotulo_fiador==='FIADORA'&&/\*\*FIADORA:\*\* \*\*MARIA FIADORA TESTE\*\*/.test(x)&&/MARIA FIADORA TESTE — FIADORA/.test(x)&&/fiador e principal pagador \*\*MARIA FIADORA TESTE\*\*/.test(x)&&estruturarTexto(x).filter(b=>b.tipo==='assinatura').length===5;})());
   v('locação: revisão cobra as partes e o imóvel, não razão social',(()=>{
     const probs=validar().map(p=>p[1]).join(' | ');
     return !/Razão Social|quotas/i.test(probs);})());
