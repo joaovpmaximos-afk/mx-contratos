@@ -2626,7 +2626,16 @@ function validar(){
   if(totQ>0){const somaQ=somaQuotasAtuais(estado.socios);if(somaQ!==totQ)probs.push(['e','A soma das quotas não fecha 100% (aba Quotas).']);}
   if(!estado.assinatura.data)probs.push(['w','Data de assinatura não informada.']);
   if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
+  // o modelo escolhido dá conta do que este contrato tem? (ver modeloSugeridoParaOContrato)
+  const sug=modeloSugeridoParaOContrato(estado,modelos);
+  if(sug)probs.push(['w','Este contrato tem '+sug.motivos.join(' e ')+', mas o modelo "'+sug.atual.nome+'" não escreve cláusula de quadro societário.'+(sug.modelo?' Use "'+sug.modelo.nome+'".':'')]);
   return probs;
+}
+function trocarParaModelo(id){
+  const sel=el('sel-modelo');if(!sel)return;
+  sel.value=id;estado.modelo_id=id;salvarCasoAtivo();
+  gerarContrato();
+  toast('Modelo trocado — confira o documento');
 }
 function gerarContrato(){
   const id=el('sel-modelo').value;
@@ -2640,6 +2649,8 @@ function gerarContrato(){
   probs.forEach(([tp,msg])=>html+=`<li class="${tp}">${tp==='e'?'✕':'⚠'} ${esc(msg)}</li>`);
   const temErro=probs.some(p=>p[0]==='e');
   if(!temErro)html+='<li class="ok">✔ Campos obrigatórios preenchidos. Contrato gerado abaixo.</li>';
+  const sugestao=modeloSugeridoParaOContrato(estado,modelos);
+  if(sugestao&&sugestao.modelo)html+='<li class="w">⚠ <button class="btn contorno peq" onclick="trocarParaModelo(\''+sugestao.modelo.id+'\')">Usar "'+esc(sugestao.modelo.nome)+'"</button></li>';
   avisosEl.innerHTML=html;
   if(temErro){toast('Corrija as pendências em vermelho antes de gerar.');return;}
   const ctx=montarContexto();
@@ -4471,6 +4482,35 @@ function autoteste(){
   v('etapa do imóvel não aparece nos contratos societários',!TODAS_ETAPAS.includes('locacao')&&OPERACOES.find(o=>o.id==='constituicao').etapas.indexOf('locacao')<0);
   estado=estadoVazio();
 
+  linhas.push('— O modelo escolhido dá conta do contrato? —');
+  (function(){
+    const lista=[{id:'dados',nome:MODELOS_MAXIMOS[1][0],corpo:MODELOS_MAXIMOS[1][2]},{id:'qsa',nome:MODELOS_MAXIMOS[0][0],corpo:MODELOS_MAXIMOS[0][2]}];
+    const comSaida={modelo_id:'dados',socios:[{nome:'A'},{nome:'B',situacao:'sai',quotas_para:'A'}],alteracoes:{alterou_razao_social:true}};
+    const s=modeloSugeridoParaOContrato(comSaida,lista);
+    v('sócio saindo + modelo de dados → avisa e aponta o modelo de QSA',!!s&&/sócio saindo/.test(s.motivos.join())&&s.modelo.id==='qsa'&&s.atual.id==='dados');
+    v('o mesmo contrato no modelo de QSA não gera aviso',modeloSugeridoParaOContrato(Object.assign({},comSaida,{modelo_id:'qsa'}),lista)===null);
+    v('só razão social e endereço: o modelo de dados serve',modeloSugeridoParaOContrato({modelo_id:'dados',socios:[{nome:'A'}],alteracoes:{alterou_razao_social:true,alterou_endereco:true}},lista)===null);
+    v('entrada de sócio, transferência de quotas e capital também avisam',(()=>{
+      const e1=modeloSugeridoParaOContrato({modelo_id:'dados',socios:[{nome:'A'},{nome:'C',situacao:'entra'}],alteracoes:{}},lista);
+      const e2=modeloSugeridoParaOContrato({modelo_id:'dados',socios:[{nome:'A'}],alteracoes:{transferencia_quotas:true}},lista);
+      const e3=modeloSugeridoParaOContrato({modelo_id:'dados',socios:[{nome:'A'}],alteracoes:{alterou_capital:true}},lista);
+      return !!e1&&!!e2&&!!e3&&/entrando/.test(e1.motivos.join())&&/transferência/.test(e2.motivos.join())&&/capital/.test(e3.motivos.join());})());
+    v('marcar "Saída de Sócio" nas alterações, sem mexer no sócio, também avisa',!!modeloSugeridoParaOContrato({modelo_id:'dados',socios:[{nome:'A'}],alteracoes:{saida_socio:true}},lista));
+    v('sem modelo escolhido não há o que sugerir',modeloSugeridoParaOContrato({socios:[{nome:'B',situacao:'sai'}],alteracoes:{}},lista)===null);
+    v('modelo próprio que trata quadro societário é aceito',modeloSugeridoParaOContrato({modelo_id:'meu',socios:[{nome:'B',situacao:'sai'}],alteracoes:{}},[{id:'meu',nome:'Meu',corpo:'{{#each socios_retirantes_cessao}}x{{/each}}'}])===null);
+  })();
+  v('a revisão mostra o aviso do modelo errado (caso real: saída de sócio no modelo de dados)',(()=>{
+    const guardado=modelos;
+    modelos=[{id:'dados',nome:MODELOS_MAXIMOS[1][0],corpo:MODELOS_MAXIMOS[1][2]},{id:'qsa',nome:MODELOS_MAXIMOS[0][0],corpo:MODELOS_MAXIMOS[0][2]}];
+    estado=estadoVazio();estado.operacao='alteracao';estado.modelo_id='dados';
+    estado.empresa={razao_social:'ALFA LTDA'};
+    estado.socios=[{nome:'ANA',cpf:'1',quotas:'100'},{nome:'BRUNO',cpf:'2',situacao:'sai',quotas:'50',quotas_para:'ANA'}];
+    estado.capital={valor:'100,00',quotas:'100'};
+    estado.alteracoes={alterou_razao_social:true,rs_nova:'BETA LTDA'};
+    const avisos=validar().map(p=>p[1]).join(' ');
+    modelos=guardado;estado=estadoVazio();
+    return /não escreve cláusula de quadro societário/.test(avisos)&&/Alteração de Sócios \(QSA\)/.test(avisos);})());
+
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
   el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
@@ -4603,9 +4643,9 @@ const TODAS_ETAPAS=ETAPAS.map(e=>e.id).filter(e=>e!=='locacao'); // a etapa do i
 const SEM_ALTERACOES=TODAS_ETAPAS.filter(e=>e!=='alteracoes');
 const OPERACOES=[
   {id:'constituicao',ic:'construir',nome:'Constituição',desc:'Criar uma nova sociedade.',tipo:'Constituição',etapas:SEM_ALTERACOES,modelo:'Constituição de Sociedade Ltda. — padrão MAXIMOS'},
-  {id:'alteracao',ic:'alteracoes',nome:'Alteração contratual',desc:'Modificar informações de uma sociedade existente.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,modelo:'Alteração de Dados (denominação, sede, objeto) e Consolidação — padrão MAXIMOS'},
-  {id:'socios',ic:'socios',nome:'Entrada / saída de sócio',desc:'Alterar o quadro societário (QSA).',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['saida_socio'],modelo:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'},
-  {id:'capital',ic:'capital',nome:'Aumento / redução de capital',desc:'Modificar o capital social e as quotas.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['alterou_capital'],modelo:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'},
+  {id:'alteracao',ic:'alteracoes',nome:'Alteração contratual',desc:'Mudar denominação, sede ou objeto — sem mexer no quadro societário.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,modelo:'Alteração de Dados (denominação, sede, objeto) e Consolidação — padrão MAXIMOS'},
+  {id:'socios',ic:'socios',nome:'Entrada / saída de sócio',desc:'Quem entra ou sai da sociedade — junto com denominação, sede e objeto, se houver.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['saida_socio'],modelo:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'},
+  {id:'capital',ic:'capital',nome:'Aumento / redução de capital',desc:'Mudar o capital e a distribuição das quotas.',tipo:'Alteração Contratual',etapas:TODAS_ETAPAS,marcar:['alterou_capital'],modelo:'Alteração de Sócios (QSA) e Consolidação — padrão MAXIMOS'},
   {id:'consolidacao',ic:'modelos',nome:'Consolidação',desc:'Consolidar o contrato social.',tipo:'Consolidação',etapas:SEM_ALTERACOES},
   {id:'distrato',ic:'encerrar',nome:'Distrato',desc:'Encerrar a sociedade.',tipo:'Distrato Social',etapas:SEM_ALTERACOES},
   {id:'locacao',ic:'documento',nome:'Contrato de locação',desc:'Alugar um imóvel: locador, locatário, aluguel e prazo.',tipo:'Locação',
@@ -4619,6 +4659,27 @@ function modeloDaOperacao(lista,tipo,preferido){
   if(!tipo||!doTipo.length)return null;
   const oficiais=MODELOS_MAXIMOS.map(x=>x[0]);
   return doTipo.find(m=>m.nome===preferido)||doTipo.find(m=>oficiais.indexOf(m.nome)>=0)||doTipo[0];
+}
+// O modelo escolhido precisa saber escrever o que o contrato tem. Já aconteceu: com sócio marcado
+// como "sai da sociedade", a operação Alteração contratual abria o modelo de dados (denominação,
+// sede, objeto) e o contrato saía SEM a cláusula de saída — calado. Aqui isso vira aviso na tela,
+// com o modelo certo a um clique. Avisa, não impede: quem quiser gerar assim, gera.
+function modeloSabeQuadroSocietario(corpo){return /socios_retirantes|mudou_quadro_societario/.test(String(corpo||''));}
+function modeloSugeridoParaOContrato(est,lista){
+  est=est||{};
+  const socios=(est.socios||[]).filter(s=>s&&s.nome);
+  const alt=est.alteracoes||{};
+  const motivos=[];
+  if(socios.some(s=>s.situacao==='sai'))motivos.push('sócio saindo da sociedade');
+  if(socios.some(s=>s.situacao==='entra'))motivos.push('sócio entrando');
+  if(alt.saida_socio&&!motivos.length)motivos.push('saída de sócio marcada nas alterações');
+  if(alt.transferencia_quotas)motivos.push('transferência de quotas');
+  if(alt.alterou_capital)motivos.push('alteração de capital');
+  if(!motivos.length)return null;
+  const atual=(lista||[]).find(m=>m.id===est.modelo_id);
+  if(!atual||modeloSabeQuadroSocietario(atual.corpo))return null; // o modelo já trata
+  const certo=(lista||[]).find(m=>m.nome===MODELOS_MAXIMOS[0][0])||(lista||[]).find(m=>modeloSabeQuadroSocietario(m.corpo));
+  return {motivos:motivos,modelo:certo||null,atual:atual};
 }
 function operacaoAtual(){return OPERACOES.find(o=>o.id===(estado.operacao||'livre'))||OPERACOES[OPERACOES.length-1];}
 function ehLocacao(){return (estado.operacao||'')==='locacao';}
