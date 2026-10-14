@@ -2527,10 +2527,22 @@ function montarListaModelos(){
         '<button class="btn contorno peq" onclick="editarModeloModal('+i+')">'+svg('editar')+'Editar</button>'+
         '<button class="btn contorno peq" onclick="visualizarModelo('+i+')">'+svg('olho')+'Visualizar</button>'+
         '<button class="btn contorno peq" onclick="duplicarModelo('+i+')">'+svg('duplicar')+'Duplicar</button>'+
+        (oficial&&m.editado?'<button class="btn contorno peq" onclick="restaurarModeloOficial('+i+')" title="Volta ao texto do escritório">'+svg('setaEsq')+'Restaurar o texto do escritório</button>':'')+
         '<button class="btn ouro peq" onclick="usarModelo('+i+')">'+svg('documento')+'Usar modelo</button>'+
         '<button class="btn perigo peq" onclick="removerModelo('+i+')" aria-label="Excluir modelo">'+svg('lixeira')+'</button>'+
       '</div></div>';
   }).join('');
+}
+// devolve o modelo ao texto do escritório (o editado vira uma cópia, para ninguém perder trabalho)
+function restaurarModeloOficial(i){
+  const m=modelos[i];if(!m)return;
+  const of=MODELOS_MAXIMOS.find(x=>x[0]===m.nome);
+  if(!of){toast('Este modelo não é um modelo do escritório.');return;}
+  if(!confirm('Guardar o texto editado como cópia e voltar "'+m.nome+'" ao padrão do escritório?'))return;
+  modelos.push({id:'cp'+Date.now(),nome:m.nome+' (editado à mão)',tipo:m.tipo,corpo:m.corpo,editado:true});
+  m.corpo=of[2];m.tipo=of[1];delete m.editado;
+  gravar(CHAVE_MODELOS,modelos);montarListaModelos();atualizarSeletorModelos();
+  toast('Modelo restaurado — a versão editada ficou guardada como cópia');
 }
 function filtrarModelos(t){filtroModelos=t;montarListaModelos();}
 function usarModelo(i){
@@ -2627,6 +2639,7 @@ function validar(){
   if(!estado.assinatura.data)probs.push(['w','Data de assinatura não informada.']);
   if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
   // o modelo escolhido dá conta do que este contrato tem? (ver modeloSugeridoParaOContrato)
+  pessoasRepetidas(estado.socios).forEach(n=>probs.push(['w',n+' está cadastrado duas vezes na lista de sócios — as cláusulas dessa pessoa saem repetidas.']));
   const sug=modeloSugeridoParaOContrato(estado,modelos);
   if(sug)probs.push(['w','Este contrato tem '+sug.motivos.join(' e ')+', mas o modelo "'+sug.atual.nome+'" não escreve cláusula de quadro societário.'+(sug.modelo?' Use "'+sug.modelo.nome+'".':'')]);
   return probs;
@@ -2657,6 +2670,9 @@ function gerarContrato(){
   let texto;
   try{texto=renderTemplate(modelo.corpo,ctx);}catch(e){avisosEl.innerHTML+='<li class="e">Erro ao processar o modelo: '+esc(e.message)+'</li>';return;}
   ultimoTexto=texto;
+  // confere o RESULTADO, não só os dados: cláusula repetida costuma vir de modelo editado à mão
+  const repetidos=trechosRepetidos(texto);
+  if(repetidos.length)avisosEl.innerHTML+='<li class="w">⚠ '+repetidos.length+' trecho(s) do contrato saíram repetidos. Se o modelo foi editado à mão, use "Restaurar o texto do escritório" na tela Modelos. Primeiro repetido: “'+esc(repetidos[0])+'…”</li>';
   el('preview').innerHTML='<div class="corpo-doc">'+textoParaHtml(texto)+'</div>';
   aplicarTimbreNaPrevia();
   aplicarZoom();
@@ -4511,6 +4527,33 @@ function autoteste(){
     modelos=guardado;estado=estadoVazio();
     return /não escreve cláusula de quadro societário/.test(avisos)&&/Alteração de Sócios \(QSA\)/.test(avisos);})());
 
+  linhas.push('— Cláusula repetida no documento —');
+  v('o modelo do escritório não repete cláusula em nenhuma forma de saída',(()=>{
+    const casos=[{},{saida_tipo:'notificacao'}];
+    return casos.every(extra=>{
+      estado=estadoVazio();estado.operacao='socios';
+      estado.empresa={razao_social:'ALFA LTDA',cnpj:'11.222.333/0001-44',nire:'352',endereco:'Rua 1',cidade:'Rio Claro',estado:'SP',data_constituicao:'10/02/2019',objeto_social:'Comércio'};
+      estado.socios=[{nome:'ANA',nacionalidade:'brasileira',estado_civil:'solteira',cpf:'111.111.111-11',endereco:'Rua A',cidade:'Rio Claro',estado:'SP',quotas:'10000'},
+        Object.assign({nome:'BRUNO',nacionalidade:'brasileiro',estado_civil:'solteiro',cpf:'222.222.222-22',endereco:'Rua B',cidade:'Rio Claro',estado:'SP',situacao:'sai',quotas:'5000',quotas_para:'ANA'},extra)];
+      estado.capital={valor:'10.000,00',quotas:'10000'};estado.administracao={tipo:'socio_0',terceiro:{}};
+      estado.alteracoes={saida_socio:true,saida_arquivamento:'096/26',saida_sessao:'20/03/2026',alterou_razao_social:true,rs_nova:'BETA LTDA'};
+      estado.foro={comarca:'Rio Claro',uf:'SP'};estado.assinatura={cidade:'Rio Claro',data:'2026-10-14',uf:'SP'};
+      return trechosRepetidos(renderTemplate(MODELO_ALT_CONSOLIDACAO,montarContexto())).length===0;});})());
+  v('cláusula colada duas vezes no modelo é detectada',(()=>{
+    const c='**Cláusula 1ª -** '+'O sócio BRUNO, possuidor de 5.000 quotas, não pretendendo mais continuar na sociedade, cede e transfere suas quotas para a sócia ANA, que as recebe neste ato.';
+    return trechosRepetidos(c+'\n\n'+c.replace('1ª','2ª')).length===1;})());
+  v('título, testemunhas e linha de assinatura podem repetir',trechosRepetidos('**TESTEMUNHAS:**\n\n_________________________________________\n\n_________________________________________\n\n**TESTEMUNHAS:**').length===0);
+  v('parágrafo curto repetido não vira aviso',trechosRepetidos('Rio Claro, 14 de outubro de 2026.\n\nRio Claro, 14 de outubro de 2026.').length===0);
+  v('mesma pessoa duas vezes pelo CPF',pessoasRepetidas([{nome:'ANA',cpf:'111.111.111-11'},{nome:'ANA MARIA',cpf:'111.111.111-11'},{nome:'BRUNO',cpf:'222.222.222-22'}]).join()==='ANA MARIA');
+  v('sem CPF, vale o nome (com espaços e maiúsculas diferentes)',pessoasRepetidas([{nome:'Ana  Teste'},{nome:'ANA TESTE'}]).join()==='ANA TESTE');
+  v('pessoas diferentes, e fichas ainda em branco, não geram aviso',pessoasRepetidas([{nome:'ANA',cpf:'111.111.111-11'},{nome:'BRUNO',cpf:'222.222.222-22'},{},{},{nome:''}]).length===0);
+  v('a revisão avisa sobre a pessoa repetida',(()=>{
+    estado=estadoVazio();estado.operacao='socios';estado.empresa={razao_social:'ALFA LTDA'};
+    estado.socios=[{nome:'ANA',cpf:'111.111.111-11',quotas:'5000'},{nome:'ANA',cpf:'111.111.111-11',quotas:'5000'}];
+    estado.capital={valor:'10.000,00',quotas:'10000'};
+    const avisos=validar().map(p=>p[1]).join(' ');estado=estadoVazio();
+    return /cadastrado duas vezes/.test(avisos);})());
+
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
   el('autoteste').innerHTML='<pre>'+esc(cabecalho+linhas.join('\n'))+'</pre>';
@@ -4664,6 +4707,33 @@ function modeloDaOperacao(lista,tipo,preferido){
 // como "sai da sociedade", a operação Alteração contratual abria o modelo de dados (denominação,
 // sede, objeto) e o contrato saía SEM a cláusula de saída — calado. Aqui isso vira aviso na tela,
 // com o modelo certo a um clique. Avisa, não impede: quem quiser gerar assim, gera.
+// Cláusula que sai duas vezes no documento pronto. Acontece quando o modelo foi editado à mão
+// (alguém colou a cláusula que faltava) ou quando a mesma pessoa está cadastrada duas vezes.
+// Só conta parágrafo longo: título, "TESTEMUNHAS" e linha de assinatura repetem de propósito.
+function trechosRepetidos(texto,minimo){
+  const min=minimo||120;
+  const vistos={},repetidos=[];
+  String(texto||'').split(/\n{2,}/).forEach(p=>{
+    const chave=p.replace(/\*\*/g,'').replace(/^\s*Cláusula\s+\d+ª?\s*[-—]\s*/i,'').replace(/\s+/g,' ').trim().toLowerCase();
+    if(chave.length<min)return;
+    if(/^\s*\|/.test(p))return; // a tabela de quotas sai duas vezes de propósito (alteração e consolidação)
+    vistos[chave]=(vistos[chave]||0)+1;
+    if(vistos[chave]===2)repetidos.push(p.replace(/\*\*/g,'').replace(/\s+/g,' ').trim().slice(0,90));
+  });
+  return repetidos;
+}
+// mesma pessoa cadastrada duas vezes (mesmo CPF; sem CPF, mesmo nome)
+function pessoasRepetidas(pessoas){
+  const porChave={},repetidas=[];
+  (pessoas||[]).forEach(p=>{
+    if(!p||!p.nome)return;
+    const digitos=String(p.cpf||'').replace(/\D/g,'');
+    const chave=digitos||('nome:'+String(p.nome).replace(/\s+/g,' ').trim().toLowerCase());
+    porChave[chave]=(porChave[chave]||0)+1;
+    if(porChave[chave]===2)repetidas.push(String(p.nome).trim());
+  });
+  return repetidas;
+}
 function modeloSabeQuadroSocietario(corpo){return /socios_retirantes|mudou_quadro_societario/.test(String(corpo||''));}
 function modeloSugeridoParaOContrato(est,lista){
   est=est||{};
