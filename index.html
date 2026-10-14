@@ -3570,11 +3570,7 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 
 **Cláusula {{clausula_num}} -** {{cedente}} **{{nome}}** declara que recebeu neste ato a importância de {{valor}} ({{valor_extenso}}) {{quotas_para_cessionario}}, dando tudo por quitado, nada mais tendo a reclamar.
 
-{{/each}}{{/if}}{{#if mudou_quadro_societario}}**Cláusula {{clausula_num}} -** O Capital Social de {{capital_valor}} ({{capital_valor_extenso}}) dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, fica assim subscrito e distribuído:
-
-| SÓCIO | Nº DE QUOTAS | VALOR | PERCENTUAL |
-{{#each socios_atuais}}| {{nome}} | {{quotas}} | {{valor}} | {{percentual}} |
-{{/each}}| TOTAL | {{capital_quotas}} | {{capital_valor}} | 100% |
+{{/each}}{{/if}}{{#if mudou_quadro_societario}}**Cláusula {{clausula_num}} -** O Capital Social de {{capital_valor}} ({{capital_valor_extenso}}) dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, fica assim subscrito e distribuído conforme o quadro constante da consolidação abaixo.
 
 {{/if}}{{#if mudou_administracao}}**Cláusula {{clausula_num}} -** A administração da sociedade caberá {{administracao_a_qualificada}}, que {{podera_adm}}{{#if tem_varios_administradores}}, isoladamente ou conjuntamente,{{/if}} praticar atos necessários ao seu funcionamento regular, tais como abrir e movimentar contas bancárias, assinar ou endossar cheques, duplicatas e outros títulos cambiários, autorizado o uso do nome empresarial, vedado, no entanto em atividades estranhas ao interesse social.
 
@@ -4292,7 +4288,11 @@ function autoteste(){
   const txtMx=renderTemplate(MODELO_ALT_CONSOLIDACAO,cm);
   const blMx=estruturarTexto(txtMx);
   v('modelo MAXIMOS: 3 títulos no topo + CONSOLIDAÇÃO como seção',blMx.filter(b=>b.tipo==='titulo'&&b.nivel===1).length===3&&blMx.filter(b=>b.tipo==='titulo'&&b.nivel===2).map(b=>b.linhas[0][0].t).join()==='CONSOLIDAÇÃO');
-  v('modelo MAXIMOS: 2 tabelas de quotas (alteração e consolidação) com cabeçalho, sócia e total',blMx.filter(b=>b.tipo==='tabela').length===2&&blMx.filter(b=>b.tipo==='tabela').every(t=>t.linhas.length===3));
+  v('modelo MAXIMOS: 1 tabela de quotas, só na consolidação, com cabeçalho, sócia e total',(()=>{
+    const tb=blMx.filter(b=>b.tipo==='tabela');
+    if(tb.length!==1||tb[0].linhas.length!==3)return false;
+    const antes=txtMx.slice(0,txtMx.indexOf('**CONSOLIDAÇÃO**'));
+    return antes.indexOf('| SÓCIO |')<0&&/fica assim subscrito e distribuído conforme o quadro constante da consolidação abaixo\./.test(antes);})());
   v('modelo MAXIMOS: consolidação recomeça na Cláusula 1ª',/\*\*CONSOLIDAÇÃO\*\*\s*\n\s*\*\*Cláusula 1ª -\*\*/.test(txtMx));
   v('modelo MAXIMOS: nenhum marcador sobrando',!/\{\{|\}\}/.test(txtMx));
   v('modelo MAXIMOS: 2 assinaturas',blMx.filter(b=>b.tipo==='assinatura').length===2);
@@ -4542,6 +4542,7 @@ function autoteste(){
   v('cláusula colada duas vezes no modelo é detectada',(()=>{
     const c='**Cláusula 1ª -** '+'O sócio BRUNO, possuidor de 5.000 quotas, não pretendendo mais continuar na sociedade, cede e transfere suas quotas para a sócia ANA, que as recebe neste ato.';
     return trechosRepetidos(c+'\n\n'+c.replace('1ª','2ª')).length===1;})());
+  v('tabela de quotas repetida não vira aviso (modelo que a usa duas vezes)',trechosRepetidos('| SÓCIO | Nº DE QUOTAS | VALOR | PERCENTUAL |\n| ANA TESTE DA SILVA | 10.000 | R$ 10.000,00 | 100% |\n| TOTAL | 10.000 | R$ 10.000,00 | 100% |\n\n| SÓCIO | Nº DE QUOTAS | VALOR | PERCENTUAL |\n| ANA TESTE DA SILVA | 10.000 | R$ 10.000,00 | 100% |\n| TOTAL | 10.000 | R$ 10.000,00 | 100% |').length===0);
   v('título, testemunhas e linha de assinatura podem repetir',trechosRepetidos('**TESTEMUNHAS:**\n\n_________________________________________\n\n_________________________________________\n\n**TESTEMUNHAS:**').length===0);
   v('parágrafo curto repetido não vira aviso',trechosRepetidos('Rio Claro, 14 de outubro de 2026.\n\nRio Claro, 14 de outubro de 2026.').length===0);
   v('mesma pessoa duas vezes pelo CPF',pessoasRepetidas([{nome:'ANA',cpf:'111.111.111-11'},{nome:'ANA MARIA',cpf:'111.111.111-11'},{nome:'BRUNO',cpf:'222.222.222-22'}]).join()==='ANA MARIA');
