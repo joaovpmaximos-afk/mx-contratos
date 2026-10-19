@@ -1158,6 +1158,7 @@ const ALTERACOES=[
   {flag:'alterou_atividade',rotulo:'Alteração de Atividade Econômica',campos:[['ativ_novo','Novo objeto social / atividade',12,'textarea']]},
   {flag:'incluiu_cnae',rotulo:'Inclusão de CNAE',campos:[['cnae_incluir','CNAEs a incluir (um por linha)',12,'textarea']]},
   {flag:'excluiu_cnae',rotulo:'Exclusão de CNAE',campos:[['cnae_excluir','CNAEs a excluir (um por linha)',12,'textarea']]},
+  {flag:'abriu_filial',rotulo:'Abertura de Filial',campos:[['filial_endereco','Endereço da filial (rua, nº e complemento)',8],['filial_cep','CEP',4],['filial_bairro','Bairro',4],['filial_cidade','Cidade',4],['filial_uf','UF',4],['filial_objeto','Objeto social da filial — atividades (geralmente as mesmas da matriz)',12,'textarea']]},
   {flag:'entrada_socio',rotulo:'Entrada de Sócio',campos:[['entrada_obs','Quem entra (cadastre também na aba Sócios)',12]]},
   {flag:'saida_socio',rotulo:'Saída de Sócio',campos:[['saida_nome','Sócio que se retira',6],['saida_destino','Destino das quotas',6],['saida_info','No padrão MAXIMOS: marque “sai da sociedade” no sócio (aba Sócios) e diga para quem vão as quotas',12,'info'],['saida_arquivamento','Se alguém sai por notificação extrajudicial: nº do arquivamento na Junta (ex.: 096.399/26-3)',6],['saida_sessao','Data da sessão do arquivamento (ex.: 20/03/2026)',6]]},
   {flag:'transferencia_quotas',rotulo:'Transferência de Quotas',campos:[['transf_de','De (cedente)',4],['transf_para','Para (cessionário)',4],['transf_qtd','Quantidade de quotas',4]]},
@@ -1578,6 +1579,15 @@ function contextoLocacao(ctx,pessoas){
     p.fiadores.map(x=>({nome:x.nome,papel:papelDe(x,'FIADOR','FIADORA')}))
   );
 }
+// endereço da filial escrito como no contrato ("..., bairro X, na cidade de Y, estado de Z, CEP ...")
+function enderecoFilial(a){
+  if(!a||!a.filial_endereco)return '';
+  let s=a.filial_endereco+(a.filial_bairro?', bairro '+a.filial_bairro:'');
+  if(a.filial_cidade)s+=', na cidade de '+a.filial_cidade;
+  if(a.filial_uf)s+=', estado de '+estadoPorExtenso(a.filial_uf);
+  if(a.filial_cep)s+=', CEP '+a.filial_cep;
+  return s;
+}
 function contextoMaximos(ctx,socios){
   const alt=estado.alteracoes||{};
   // quem fica / sai / entra (campo "situacao" do sócio)
@@ -1619,6 +1629,8 @@ function contextoMaximos(ctx,socios){
   ctx.sede_atual=(alt.alterou_endereco&&alt.end_novo)?alt.end_novo:ctx.sede_completa;
   ctx.razao_social_atual=(alt.alterou_razao_social&&alt.rs_nova)?alt.rs_nova:(e.razao_social||'');
   ctx.objeto_atual=(alt.alterou_atividade&&alt.ativ_novo)?alt.ativ_novo:(e.objeto_social||'');
+  ctx.filial_local=enderecoFilial(alt);
+  ctx.filial_objeto=String(alt.filial_objeto||'').trim().replace(/[.\s]+$/,'');
   ctx.data_constituicao_extenso=dataBrParaExtenso(e.data_constituicao);
   const totQ=inteiro(estado.capital.quotas),capVal=num(estado.capital.valor);
   ctx.capital_quotas_extenso=totQ?extensoFeminino(totQ):'';
@@ -1895,7 +1907,7 @@ function aoMudarAdmin(silencioso){
   aplicarVisibilidadeAdmin(tipoAdminEscolhido());
   if(!silencioso)salvar();
 }
-const ICONES_ALT={alterou_razao_social:'etiqueta',alterou_nome_fantasia:'fantasia',alterou_endereco:'local',alterou_atividade:'bussola',incluiu_cnae:'maisCirculo',excluiu_cnae:'menosCirculo',entrada_socio:'pessoa',saida_socio:'porta',transferencia_quotas:'trocar',alterou_capital:'capital',mudou_administracao:'admin',transformacao:'alteracoes',consolidacao:'modelos'};
+const ICONES_ALT={alterou_razao_social:'etiqueta',alterou_nome_fantasia:'fantasia',alterou_endereco:'local',alterou_atividade:'bussola',incluiu_cnae:'maisCirculo',excluiu_cnae:'menosCirculo',entrada_socio:'pessoa',saida_socio:'porta',transferencia_quotas:'trocar',alterou_capital:'capital',mudou_administracao:'admin',transformacao:'alteracoes',consolidacao:'modelos',abriu_filial:'construir'};
 function montarAlteracoes(){
   const grade=el('grade-alteracoes'),c=el('lista-alteracoes');
   if(!grade||!c)return;
@@ -1923,7 +1935,7 @@ function descricaoAlteracao(flag){
     alterou_atividade:'Trocar o objeto social.',incluiu_cnae:'Acrescentar atividades.',excluiu_cnae:'Retirar atividades.',
     entrada_socio:'Incluir participante no quadro.',saida_socio:'Retirar sócio (cessão ou notificação).',transferencia_quotas:'Passar quotas entre sócios.',
     alterou_capital:'Aumentar ou reduzir o capital.',mudou_administracao:'Trocar quem administra.',transformacao:'Mudar a natureza jurídica.',
-    consolidacao:'Consolidar o contrato ao final.'}[flag]||'';
+    consolidacao:'Consolidar o contrato ao final.',abriu_filial:'Abrir uma filial da empresa.'}[flag]||'';
 }
 function alternarAlteracao(flag){
   estado.alteracoes=estado.alteracoes||{};
@@ -2638,6 +2650,11 @@ function validar(){
   if(totQ>0){const somaQ=somaQuotasAtuais(estado.socios);if(somaQ!==totQ)probs.push(['e','A soma das quotas não fecha 100% (aba Quotas).']);}
   if(!estado.assinatura.data)probs.push(['w','Data de assinatura não informada.']);
   if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
+  if((estado.alteracoes||{}).abriu_filial){
+    const af=estado.alteracoes;
+    if(!af.filial_endereco)probs.push(['e','Marcou Abertura de Filial, mas não informou o endereço da filial (aba Alterações).']);
+    if(!af.filial_objeto)probs.push(['w','Abertura de Filial sem o objeto social da filial — em geral são as mesmas atividades da matriz.']);
+  }
   // o modelo escolhido dá conta do que este contrato tem? (ver modeloSugeridoParaOContrato)
   pessoasRepetidas(estado.socios).forEach(n=>probs.push(['w',n+' está cadastrado duas vezes na lista de sócios — as cláusulas dessa pessoa saem repetidas.']));
   const sug=modeloSugeridoParaOContrato(estado,modelos);
@@ -3580,6 +3597,8 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 
 {{/if}}{{#if alterou_atividade}}**Cláusula {{clausula_num}} -** Fica alterado o objeto social para o exercício das seguintes atividades econômicas: {{ativ_novo}}.
 
+{{/if}}{{#if abriu_filial}}**Cláusula {{clausula_num}} -** Resolve-se constituir, nesta data, uma filial, a qual terá o seu estabelecimento comercial situado na {{filial_local}}, e terá por objeto social as atividades de {{filial_objeto}}.
+
 {{/if}}**CONSOLIDAÇÃO**{{reiniciar_clausulas}}
 
 **Cláusula {{clausula_num}} -** A sociedade girará sob a denominação social de **{{razao_social_atual}}.**
@@ -3591,7 +3610,11 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 {{#each cnaes_lista}}**CNAE:** {{valor}}.
 {{/each}}
 
-**Cláusula {{clausula_num}} -** A duração da sociedade será por tempo indeterminado e o início das atividades ocorreu em {{data_constituicao_extenso}}.
+{{#if abriu_filial}}**Cláusula {{clausula_num}} -** A sociedade possui a seguinte filial constituída:
+
+Estabelecida na {{filial_local}}, e terá por objeto social as atividades de {{filial_objeto}}.
+
+{{/if}}**Cláusula {{clausula_num}} -** A duração da sociedade será por tempo indeterminado e o início das atividades ocorreu em {{data_constituicao_extenso}}.
 
 **Cláusula {{clausula_num}} -** O capital social é de {{capital_valor}} ({{capital_valor_extenso}}), dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, ficando assim subscrito e distribuído:
 
@@ -3641,6 +3664,8 @@ const MODELO_ALT_DADOS=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO CONTRATUAL
 
 {{/if}}{{#if alterou_atividade}}**Cláusula {{clausula_num}} -** A sociedade terá por objeto o exercício das seguintes atividades econômicas: {{ativ_novo}}.
 
+{{/if}}{{#if abriu_filial}}**Cláusula {{clausula_num}} -** Resolve-se constituir, nesta data, uma filial, a qual terá o seu estabelecimento comercial situado na {{filial_local}}, e terá por objeto social as atividades de {{filial_objeto}}.
+
 {{/if}}{{#if mudou_administracao}}**Cláusula {{clausula_num}} -** A administração da sociedade passa a ser exercida {{administracao_de}}, {{a_ele_cabendo}} a responsabilidade ou representação ativa e passiva da sociedade, em juízo ou fora dele.
 
 {{/if}}**CONSOLIDAÇÃO**{{reiniciar_clausulas}}
@@ -3651,7 +3676,11 @@ const MODELO_ALT_DADOS=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO CONTRATUAL
 
 **Cláusula {{clausula_num}} -** A sociedade terá por objeto o exercício das seguintes atividades econômicas: {{objeto_atual}}.
 
-**Cláusula {{clausula_num}} -** A duração da sociedade será por tempo indeterminado e o início de suas atividades ocorreu em {{data_constituicao_extenso}}.
+{{#if abriu_filial}}**Cláusula {{clausula_num}} -** A sociedade possui a seguinte filial constituída:
+
+Estabelecida na {{filial_local}}, e terá por objeto social as atividades de {{filial_objeto}}.
+
+{{/if}}**Cláusula {{clausula_num}} -** A duração da sociedade será por tempo indeterminado e o início de suas atividades ocorreu em {{data_constituicao_extenso}}.
 
 **Cláusula {{clausula_num}} -** O capital social é de {{capital_valor}} ({{capital_valor_extenso}}), dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, ficando assim subscrito e distribuído:
 
@@ -4554,6 +4583,46 @@ function autoteste(){
     estado.capital={valor:'10.000,00',quotas:'10000'};
     const avisos=validar().map(p=>p[1]).join(' ');estado=estadoVazio();
     return /cadastrado duas vezes/.test(avisos);})());
+
+  linhas.push('— Abertura de filial —');
+  v('endereço da filial montado como no contrato',enderecoFilial({filial_endereco:'Rua L, nº 1557, sala 27',filial_bairro:'Escolinha',filial_cidade:'Guaramirim',filial_uf:'SC',filial_cep:'89.274-650'})==='Rua L, nº 1557, sala 27, bairro Escolinha, na cidade de Guaramirim, estado de Santa Catarina, CEP 89.274-650');
+  v('sem endereço, a filial não monta nada',enderecoFilial({})===''&&enderecoFilial({filial_bairro:'X'})==='');
+  (function(){
+    estado=estadoVazio();estado.operacao='alteracao';
+    estado.empresa={razao_social:'ALFA LTDA',cnpj:'11.222.333/0001-44',nire:'352',endereco:'Rua 1',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-000',data_constituicao:'10/02/2019',objeto_social:'Comércio'};
+    estado.socios=[{nome:'ANA',nacionalidade:'brasileira',estado_civil:'solteira',cpf:'111.111.111-11',endereco:'Rua A',cidade:'Rio Claro',estado:'SP',quotas:'10000'}];
+    estado.capital={valor:'10.000,00',quotas:'10000'};estado.administracao={tipo:'socio_0',terceiro:{}};
+    estado.alteracoes={abriu_filial:true,filial_endereco:'Rua Lauro, nº 1557, sala 27',filial_bairro:'Escolinha',filial_cidade:'Guaramirim',filial_uf:'SC',filial_cep:'89.274-650',filial_objeto:'Comércio atacadista de roupas e comércio varejista de calçados.'};
+    estado.foro={comarca:'Rio Claro',uf:'SP'};estado.assinatura={cidade:'Rio Claro',data:'2026-10-19',uf:'SP'};
+    const ctx=montarContexto();
+    v('filial no contexto: endereço montado e objeto sem ponto final',ctx.filial_local==='Rua Lauro, nº 1557, sala 27, bairro Escolinha, na cidade de Guaramirim, estado de Santa Catarina, CEP 89.274-650'&&ctx.filial_objeto==='Comércio atacadista de roupas e comércio varejista de calçados');
+    const ABRE="Resolve-se constituir, nesta data, uma filial, a qual terá o seu estabelecimento comercial situado na Rua Lauro, nº 1557, sala 27, bairro Escolinha, na cidade de Guaramirim, estado de Santa Catarina, CEP 89.274-650, e terá por objeto social as atividades de Comércio atacadista de roupas e comércio varejista de calçados.";
+    const CONS_INTRO="A sociedade possui a seguinte filial constituída:";
+    const CONS_END="Estabelecida na Rua Lauro, nº 1557, sala 27, bairro Escolinha, na cidade de Guaramirim, estado de Santa Catarina, CEP 89.274-650, e terá por objeto social as atividades de Comércio atacadista de roupas e comércio varejista de calçados.";
+    [['Alteração de Dados',MODELO_ALT_DADOS],['QSA',MODELO_ALT_CONSOLIDACAO]].forEach(function(par){
+      const txt=renderTemplate(par[1],ctx);
+      v('filial ('+par[0]+'): cláusula de abertura com a redação do escritório',txt.includes(ABRE));
+      v('filial ('+par[0]+'): cláusula na consolidação ("possui a seguinte filial")',txt.includes(CONS_INTRO)&&txt.includes(CONS_END));
+      v('filial ('+par[0]+'): nenhum marcador sobrando',!/\{\{|\}\}|undefined/.test(txt));
+    });
+    estado.alteracoes.abriu_filial=false;
+    const semTxt=renderTemplate(MODELO_ALT_DADOS,montarContexto());
+    v('sem marcar abertura de filial, nenhuma cláusula de filial aparece',!/Resolve-se constituir, nesta data, uma filial/.test(semTxt)&&!/possui a seguinte filial/.test(semTxt));
+  })();
+  v('revisão: filial marcada sem endereço reprova',(()=>{
+    estado=estadoVazio();estado.operacao='alteracao';estado.empresa={razao_social:'ALFA LTDA'};
+    estado.socios=[{nome:'ANA',cpf:'111.111.111-11',quotas:'10000'}];estado.capital={valor:'10.000,00',quotas:'10000'};
+    estado.alteracoes={abriu_filial:true};
+    const erros=validar().filter(p=>p[0]==='e').map(p=>p[1]).join(' ');estado=estadoVazio();
+    return /Abertura de Filial/.test(erros)&&/endereço da filial/.test(erros);})());
+  v('revisão: filial com endereço mas sem objeto só avisa',(()=>{
+    estado=estadoVazio();estado.operacao='alteracao';estado.empresa={razao_social:'ALFA LTDA'};
+    estado.socios=[{nome:'ANA',cpf:'111.111.111-11',quotas:'10000'}];estado.capital={valor:'10.000,00',quotas:'10000'};
+    estado.alteracoes={abriu_filial:true,filial_endereco:'Rua X, nº 1'};
+    const probs=validar();estado=estadoVazio();
+    const erroFilial=probs.some(p=>p[0]==='e'&&/filial/i.test(p[1]));
+    const avisoObjeto=probs.some(p=>p[0]==='w'&&/objeto social da filial/.test(p[1]));
+    return !erroFilial&&avisoObjeto;})());
 
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
