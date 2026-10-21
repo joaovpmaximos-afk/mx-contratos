@@ -1930,6 +1930,7 @@ function montarFiliais(){
     '<div class="campo c12"><label>Objeto social da filial (atividades)</label><textarea data-filial="'+i+'" data-fcampo="objeto" oninput="coletarFiliais();salvar()">'+esc(f.objeto||'')+'</textarea></div>'+
     '<div class="campo c12"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-weight:400"><input type="checkbox" data-filial="'+i+'" data-fcampo="nova" '+(f.nova!==false?'checked':'')+' onchange="coletarFiliais();salvar()" style="margin-top:3px"><span>Aberta neste ato — gera a cláusula “Resolve-se constituir…”. <b>Desmarque</b> se a filial já existe (entra só na consolidação).</span></label></div>'+
     '</div><button class="btn perigo peq" onclick="removerFilial('+i+')">'+svg('lixeira')+'Remover filial</button></div>').join('')+
+    '<button class="btn contorno peq" onclick="puxarFiliaisDaBase(event)" title="Puxa as filiais ativas pelo CNPJ da empresa">'+svg('baixar')+'Puxar filiais da base MAXIMOS</button> '+
     '<button class="btn contorno peq" onclick="adicionarFilial()">'+svg('mais')+'Adicionar filial</button>';
 }
 function campoFilial(i,campo,rot,span){
@@ -2250,6 +2251,50 @@ function distribuirQuotas(total,pcts){
   const ordem=brutos.map((b,i)=>({i:i,resto:b-Math.floor(b)})).sort((a,b)=>b.resto-a.resto);
   for(let k=0;k<ordem.length&&falta>0;k++,falta--)base[ordem[k].i]++;
   return base;
+}
+// Base de CNPJ da MAXIMOS (Prospecção de Leads) — usada só para LISTAR as filiais de uma empresa pela raiz.
+// Chave publishable (anon), a mesma já pública no app de Leads. Consulta por faixa de CNPJ (índice da PK).
+const BASE_LEADS="https://crlirvufkbykywkxdqsa.supabase.co";
+const CHAVE_LEADS="sb_publishable_i9c0T5PfVKMOg1GlY_Qzdg_t06faOG0";
+function raizDoCnpj(cnpj){return String(cnpj||'').replace(/\D/g,'').slice(0,8);}
+function faixaRaiz(raiz){const r=String(raiz||'').replace(/\D/g,'').slice(0,8);if(r.length!==8)return null;return {de:r,ate:String(Number(r)+1).padStart(8,'0')};}
+// usa o mesmo mapeamento da matriz (mapearDadosCnpj) para montar a filial a partir da BrasilAPI
+function filialDeBrasilApi(d){const m=mapearDadosCnpj(d).empresa;return {cnpj:String((d&&d.cnpj)||'').replace(/\D/g,''),endereco:m.endereco,bairro:m.bairro,cidade:m.cidade,uf:m.estado,cep:m.cep,objeto:m.objeto_social,nova:false};}
+async function puxarFiliaisDaBase(ev){
+  const btn=ev&&ev.currentTarget;
+  coletarFormularios();
+  const cnpj=String(estado.empresa.cnpj||'').replace(/\D/g,'');
+  if(cnpj.length!==14){toast('Preencha o CNPJ da empresa (aba Empresa) para puxar as filiais.');return;}
+  const fx=faixaRaiz(raizDoCnpj(cnpj));if(!fx){toast('CNPJ inválido.');return;}
+  if(btn){btn.classList.add('ocupado');btn.setAttribute('aria-busy','true');}
+  try{
+    let lista;
+    try{
+      const u=BASE_LEADS+'/rest/v1/empresas?select=cnpj,municipio,uf&tipo=eq.Filial&cnpj=gte.'+fx.de+'&cnpj=lt.'+fx.ate+'&order=cnpj&limit=60';
+      const r=await fetch(u,{headers:{apikey:CHAVE_LEADS,Accept:'application/json'}});
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      lista=await r.json();
+    }catch(e){toast('Não consegui consultar a base MAXIMOS: '+(e.message||e));return;}
+    if(!Array.isArray(lista)||!lista.length){toast('A base MAXIMOS não encontrou filiais ativas para este CNPJ.');return;}
+    const MAX=20,cortou=lista.length>MAX,alvo=lista.slice(0,MAX);
+    estado.filiais=estado.filiais||[];
+    const jaTem=new Set(estado.filiais.map(f=>String(f.cnpj||'').replace(/\D/g,'')).filter(Boolean));
+    let add=0,erros=0;
+    for(let i=0;i<alvo.length;i++){
+      const c=String(alvo[i].cnpj||'').replace(/\D/g,'');
+      if(!c||jaTem.has(c))continue;
+      try{
+        const d=await fetch('https://brasilapi.com.br/api/cnpj/v1/'+c).then(x=>x.ok?x.json():Promise.reject(new Error('404')));
+        estado.filiais.push(filialDeBrasilApi(d));
+      }catch(e){
+        estado.filiais.push({cnpj:c,endereco:'',bairro:'',cidade:alvo[i].municipio||'',uf:alvo[i].uf||'',objeto:'',nova:false});erros++;
+      }
+      jaTem.add(c);add++;
+    }
+    estado.alteracoes=estado.alteracoes||{};estado.alteracoes.abriu_filial=true;
+    salvarCasoAtivo();gravar(CHAVE_ESTADO,estado);montarAlteracoes();
+    toast(add+' filial(is) trazida(s) da base MAXIMOS'+(erros?' ('+erros+' sem endereço — complete à mão)':'')+(cortou?'. Há mais de '+MAX+'; traga o restante manualmente.':''));
+  }finally{if(btn){btn.classList.remove('ocupado');btn.removeAttribute('aria-busy');}}
 }
 function mapearDadosCnpj(d){
   d=d||{};const emp={};
@@ -4687,6 +4732,21 @@ function autoteste(){
     estado.alteracoes={abriu_filial:true};estado.filiais=[{endereco:'Rua X, nº 1',nova:true}];
     const probs=validar();estado=estadoVazio();
     return !probs.some(p=>p[0]==='e'&&/filial/i.test(p[1]))&&probs.some(p=>p[0]==='w'&&/objeto social/.test(p[1]));})());
+
+  linhas.push('— Puxar filiais da base MAXIMOS —');
+  v('raiz do CNPJ são os 8 primeiros dígitos',raizDoCnpj('04.205.941/0001-12')==='04205941'&&raizDoCnpj('47960950000202')==='47960950');
+  v('faixa da raiz vai de raiz a raiz+1',(()=>{const f=faixaRaiz('04205941');return f.de==='04205941'&&f.ate==='04205942';})());
+  v('faixa trata a virada do último dígito',faixaRaiz('04205949').ate==='04205950'&&faixaRaiz('04209999').ate==='04210000');
+  v('faixa inválida (menos de 8 dígitos) é nula',faixaRaiz('0420')===null&&faixaRaiz('')===null);
+  v('filial da BrasilAPI vira item da lista (endereço, cidade, UF, CEP, objeto, não-nova)',(()=>{
+    const f=filialDeBrasilApi({cnpj:'47960950000202',logradouro:'AVENIDA SAO CARLOS',numero:'1428',bairro:'CENTRO',municipio:'SAO CARLOS',uf:'SP',cep:'13560011',cnae_fiscal:4713004,cnae_fiscal_descricao:'Lojas de departamentos ou magazines'});
+    return f.endereco==='AVENIDA SAO CARLOS, 1428'&&f.bairro==='CENTRO'&&f.cidade==='SAO CARLOS'&&f.uf==='SP'&&f.cep==='13560-011'&&f.objeto==='47.13-0-04 - Lojas de departamentos ou magazines'&&f.nova===false&&f.cnpj==='47960950000202';})());
+  v('base MAXIMOS configurada (URL do Supabase + chave pública)',typeof BASE_LEADS==='string'&&/supabase\.co/.test(BASE_LEADS)&&typeof CHAVE_LEADS==='string'&&CHAVE_LEADS.length>20);
+  v('a filial puxada entra como JÁ EXISTENTE (não gera "Resolve-se constituir")',(()=>{
+    estado=estadoVazio();estado.operacao='alteracao';estado.alteracoes={abriu_filial:true};
+    estado.filiais=[filialDeBrasilApi({cnpj:'47960950000202',logradouro:'AV X',numero:'1',bairro:'B',municipio:'SAO CARLOS',uf:'SP',cep:'13560011',cnae_fiscal:4713004,cnae_fiscal_descricao:'Lojas'})];
+    const ctx=montarContexto();estado=estadoVazio();
+    return ctx.filiais.length===1&&ctx.filiais_novas.length===0&&ctx.tem_filial&&!ctx.tem_filial_nova;})());
 
   estado=estadoVazio();
   const cabecalho=`MX CONTRATOS — AUTOTESTE\n${ok}/${total} verificações OK\n${'='.repeat(40)}\n`;
