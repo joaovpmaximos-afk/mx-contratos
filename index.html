@@ -2253,9 +2253,9 @@ function distribuirQuotas(total,pcts){
   return base;
 }
 // Base de CNPJ da MAXIMOS (Prospecção de Leads) — usada só para LISTAR as filiais de uma empresa pela raiz.
-// Chave publishable (anon), a mesma já pública no app de Leads. Consulta por faixa de CNPJ (índice da PK).
+// Via Edge Function (roda com service_role NO SERVIDOR, com teto): o app NÃO carrega nenhuma chave da base.
 const BASE_LEADS="https://crlirvufkbykywkxdqsa.supabase.co";
-const CHAVE_LEADS="sb_publishable_i9c0T5PfVKMOg1GlY_Qzdg_t06faOG0";
+const FN_FILIAIS=BASE_LEADS+"/functions/v1/filiais-por-raiz";
 function raizDoCnpj(cnpj){return String(cnpj||'').replace(/\D/g,'').slice(0,8);}
 function faixaRaiz(raiz){const r=String(raiz||'').replace(/\D/g,'').slice(0,8);if(r.length!==8)return null;return {de:r,ate:String(Number(r)+1).padStart(8,'0')};}
 // usa o mesmo mapeamento da matriz (mapearDadosCnpj) para montar a filial a partir da BrasilAPI
@@ -2270,8 +2270,8 @@ async function puxarFiliaisDaBase(ev){
   try{
     let lista;
     try{
-      const u=BASE_LEADS+'/rest/v1/empresas?select=cnpj,municipio,uf&tipo=eq.Filial&cnpj=gte.'+fx.de+'&cnpj=lt.'+fx.ate+'&order=cnpj&limit=60';
-      const r=await fetch(u,{headers:{apikey:CHAVE_LEADS,Accept:'application/json'}});
+      const u=FN_FILIAIS+'?cnpj='+cnpj;
+      const r=await fetch(u,{headers:{Accept:'application/json'}});
       if(!r.ok)throw new Error('HTTP '+r.status);
       lista=await r.json();
     }catch(e){toast('Não consegui consultar a base MAXIMOS: '+(e.message||e));return;}
@@ -4741,7 +4741,7 @@ function autoteste(){
   v('filial da BrasilAPI vira item da lista (endereço, cidade, UF, CEP, objeto, não-nova)',(()=>{
     const f=filialDeBrasilApi({cnpj:'47960950000202',logradouro:'AVENIDA SAO CARLOS',numero:'1428',bairro:'CENTRO',municipio:'SAO CARLOS',uf:'SP',cep:'13560011',cnae_fiscal:4713004,cnae_fiscal_descricao:'Lojas de departamentos ou magazines'});
     return f.endereco==='AVENIDA SAO CARLOS, 1428'&&f.bairro==='CENTRO'&&f.cidade==='SAO CARLOS'&&f.uf==='SP'&&f.cep==='13560-011'&&f.objeto==='47.13-0-04 - Lojas de departamentos ou magazines'&&f.nova===false&&f.cnpj==='47960950000202';})());
-  v('base MAXIMOS configurada (URL do Supabase + chave pública)',typeof BASE_LEADS==='string'&&/supabase\.co/.test(BASE_LEADS)&&typeof CHAVE_LEADS==='string'&&CHAVE_LEADS.length>20);
+  v('base MAXIMOS via Edge Function (app sem chave)',typeof BASE_LEADS==='string'&&/supabase\.co/.test(BASE_LEADS)&&typeof FN_FILIAIS==='string'&&/\/functions\/v1\/filiais-por-raiz$/.test(FN_FILIAIS)&&typeof CHAVE_LEADS==='undefined');
   v('a filial puxada entra como JÁ EXISTENTE (não gera "Resolve-se constituir")',(()=>{
     estado=estadoVazio();estado.operacao='alteracao';estado.alteracoes={abriu_filial:true};
     estado.filiais=[filialDeBrasilApi({cnpj:'47960950000202',logradouro:'AV X',numero:'1',bairro:'B',municipio:'SAO CARLOS',uf:'SP',cep:'13560011',cnae_fiscal:4713004,cnae_fiscal_descricao:'Lojas'})];
