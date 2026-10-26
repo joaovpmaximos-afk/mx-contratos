@@ -2722,6 +2722,20 @@ function validarLocacao(){
   if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
   return probs;
 }
+function avisosExtras(est,lista){
+  lista=lista||modelos;
+  const out=[];
+  const alt=(est.alteracoes||{});
+  if(alt.abriu_filial){
+    const fl=(est.filiais||[]).filter(f=>f&&f.endereco);
+    if(!fl.length)out.push(['e','Marcou Filiais, mas não cadastrou nenhuma filial com endereço (aba Alterações).','alteracoes']);
+    if(fl.some(f=>!f.objeto))out.push(['w','Alguma filial está sem o objeto social — em geral são as mesmas atividades da matriz.','alteracoes']);
+  }
+  pessoasRepetidas(est.socios).forEach(n=>out.push(['w',n+' está cadastrado duas vezes na lista de sócios — as cláusulas dessa pessoa saem repetidas.','socios']));
+  const sug=modeloSugeridoParaOContrato(est,lista);
+  if(sug)out.push(['w','Este contrato tem '+sug.motivos.join(' e ')+', mas o modelo "'+sug.atual.nome+'" não escreve cláusula de quadro societário.'+(sug.modelo?' Use "'+sug.modelo.nome+'".':''),'gerar']);
+  return out;
+}
 function validar(){
   // não lê o DOM: quem chama coleta antes (validar também roda em background, pelo status das etapas)
   if(ehLocacao())return validarLocacao();
@@ -2735,15 +2749,7 @@ function validar(){
   if(totQ>0){const somaQ=somaQuotasAtuais(estado.socios);if(somaQ!==totQ)probs.push(['e','A soma das quotas não fecha 100% (aba Quotas).']);}
   if(!estado.assinatura.data)probs.push(['w','Data de assinatura não informada.']);
   if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
-  if((estado.alteracoes||{}).abriu_filial){
-    const fl=(estado.filiais||[]).filter(f=>f&&f.endereco);
-    if(!fl.length)probs.push(['e','Marcou Filiais, mas não cadastrou nenhuma filial com endereço (aba Alterações).']);
-    if(fl.some(f=>!f.objeto))probs.push(['w','Alguma filial está sem o objeto social — em geral são as mesmas atividades da matriz.']);
-  }
-  // o modelo escolhido dá conta do que este contrato tem? (ver modeloSugeridoParaOContrato)
-  pessoasRepetidas(estado.socios).forEach(n=>probs.push(['w',n+' está cadastrado duas vezes na lista de sócios — as cláusulas dessa pessoa saem repetidas.']));
-  const sug=modeloSugeridoParaOContrato(estado,modelos);
-  if(sug)probs.push(['w','Este contrato tem '+sug.motivos.join(' e ')+', mas o modelo "'+sug.atual.nome+'" não escreve cláusula de quadro societário.'+(sug.modelo?' Use "'+sug.modelo.nome+'".':'')]);
+  avisosExtras(estado).forEach(x=>probs.push(x));
   return probs;
 }
 function trocarParaModelo(id){
@@ -4640,6 +4646,24 @@ function autoteste(){
     const avisos=validar().map(p=>p[1]).join(' ');
     modelos=guardado;estado=estadoVazio();
     return /não escreve cláusula de quadro societário/.test(avisos)&&/Alteração de Sócios \(QSA\)/.test(avisos);})());
+  v('o painel da Revisão inclui o aviso de modelo (não só a lateral)',(()=>{
+    const lista=[{id:'qsa',nome:MODELOS_MAXIMOS[0][0],corpo:MODELOS_MAXIMOS[0][2]},{id:'dados',nome:MODELOS_MAXIMOS[1][0],corpo:MODELOS_MAXIMOS[1][2]}];
+    const ex=avisosExtras({socios:[{nome:'A'}],alteracoes:{saida_socio:true},modelo_id:'dados'},lista);
+    const ok=avisosExtras({socios:[{nome:'A'}],alteracoes:{saida_socio:true},modelo_id:'qsa'},lista);
+    return ex.some(x=>x[0]==='w'&&/quadro societário/.test(x[1])&&x[2]==='gerar')&&ok.length===0;})());
+  v('Revisão: lateral e painel concordam — não divergem',(()=>{
+    const gm=modelos,ge=estado;
+    modelos=[{id:'dados',nome:MODELOS_MAXIMOS[1][0],corpo:MODELOS_MAXIMOS[1][2]},{id:'qsa',nome:MODELOS_MAXIMOS[0][0],corpo:MODELOS_MAXIMOS[0][2]}];
+    const painelTemAviso=()=>{const tt=itensRevisao().flatMap(x=>x[1]);return tt.some(i=>i.tipo==='w'||i.tipo==='e');};
+    estado=estadoVazio();estado.operacao='socios';estado.modelo_id='dados';
+    estado.empresa={razao_social:'ALFA LTDA',cnpj:'11.222.333/0001-44',endereco:'Rua 1',cidade:'Rio Claro',estado:'SP'};
+    estado.socios=[{nome:'ANA',cpf:'529.982.247-25',endereco:'Rua A',estado_civil:'solteira',quotas:'100'}];
+    estado.capital={valor:'100,00',quotas:'100'};estado.administracao={tipo:'socios'};
+    estado.alteracoes={saida_socio:true};estado.foro={comarca:'Rio Claro',uf:'SP'};estado.assinatura={cidade:'Rio Claro',data:'2026-10-14',uf:'SP'};
+    const ladoD=statusEtapa('revisao'),painelD=painelTemAviso();
+    estado.modelo_id='qsa';const ladoQ=statusEtapa('revisao'),painelQ=painelTemAviso();
+    modelos=gm;estado=ge;
+    return ladoD==='pend'&&painelD===true&&ladoQ==='ok'&&painelQ===false;})());
 
   linhas.push('— Cláusula repetida no documento —');
   v('o modelo do escritório não repete cláusula em nenhuma forma de saída',(()=>{
@@ -5592,8 +5616,7 @@ async function ocupado(btn,tarefa){
 }
 
 /* ---------------- Revisão ---------------- */
-function montarRevisao(){
-  coletarFormularios();
+function itensRevisao(){
   const e=estado.empresa||{},socios=(estado.socios||[]).filter(s=>s&&s.nome);
   const totQ=inteiro(estado.capital.quotas),somaQ=somaQuotasAtuais(estado.socios);
   const g=[];
@@ -5636,6 +5659,13 @@ function montarRevisao(){
     (estado.assinatura||{}).data?item('ok','Data: '+dataPorExtenso(estado.assinatura.data)):item('w','Data de assinatura não informada','assinatura'),
     (estado.assinatura||{}).cidade?item('ok','Cidade de assinatura: '+estado.assinatura.cidade):item('w','Cidade de assinatura não informada','assinatura')
   ]]);
+  const _ex=avisosExtras(estado);
+  if(_ex.length)g.push(['Modelo e cláusulas',_ex.map(x=>item(x[0],x[1],x[2]))]);
+  return g;
+}
+function montarRevisao(){
+  coletarFormularios();
+  const g=itensRevisao();
   const todos=g.flatMap(x=>x[1]);
   const erros=todos.filter(i=>i.tipo==='e').length,avisos=todos.filter(i=>i.tipo==='w').length;
   const st=erros?['bloq','🔴','Contrato bloqueado','Corrija os itens em vermelho para gerar o documento.']
