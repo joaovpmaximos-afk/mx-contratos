@@ -1630,8 +1630,10 @@ function contextoMaximos(ctx,socios){
   ingressantes.forEach(s=>{
     const cedentes=retirantes.filter(r=>String(r.quotas_para||'').trim().toUpperCase()===String(s.nome||'').trim().toUpperCase());
     s.por_cessao=cedentes.length>0;
+    const cedNomes=cedentes.map(r=>'**'+r.nome+'**').join(', ').replace(/, ([^,]*)$/,' e $1');
+    const cedArt=artigoGrupo(cedentes.map(generoSocio),'pelo sócio retirante','pela sócia retirante','pelos sócios retirantes','pelas sócias retirantes');
     s.frase_ingresso=s.por_cessao
-      ? 'passando a deter '+s.quotas+' ('+s.quotas_extenso+') quotas, no valor total de '+s.valor+' ('+s.valor_extenso+'), que lhe foram cedidas e transferidas por sócio retirante, conforme cláusula acima.'
+      ? 'passando a deter '+s.quotas+' ('+s.quotas_extenso+') quotas, no valor total de '+s.valor+' ('+s.valor_extenso+'), que lhe foram cedidas e transferidas '+cedArt+' '+cedNomes+', conforme cláusula acima.'
       : 'subscrevendo '+s.quotas+' ('+s.quotas_extenso+') quotas novas, no valor total de '+s.valor+' ('+s.valor_extenso+'), integralizadas neste ato em moeda corrente nacional.';
   });
   ctx.retirantes_nomes=retNotif.map(s=>'**'+s.nome+'**').join(', ').replace(/, ([^,]*)$/,' e $1');
@@ -4530,7 +4532,7 @@ function autoteste(){
     estado.socios=[{nome:'ANA',cpf:'1',estado_civil:'solteira',quotas:'5000'},{nome:'BRUNO',cpf:'2',estado_civil:'solteiro',situacao:'sai',quotas:'5000',quotas_para:'CARLA'},{nome:'CARLA',cpf:'3',estado_civil:'solteira',situacao:'entra',quotas:'5000'}];
     estado.capital={valor:'10.000,00',quotas:'10000'};estado.alteracoes={saida_socio:true};
     const c=montarContexto();const txt=renderTemplate(MODELO_ALT_CONSOLIDACAO,c);estado=estadoVazio();
-    return c.socios_ingressantes[0].por_cessao===true && /Ingressa na sociedade[^]*?que lhe foram cedidas e transferidas por sócio retirante, conforme cláusula acima\./.test(txt);})());
+    return c.socios_ingressantes[0].por_cessao===true && /Ingressa na sociedade[^]*?que lhe foram cedidas e transferidas pelo sócio retirante \*\*BRUNO\*\*, conforme cláusula acima\./.test(txt);})());
   linhas.push('— Padrão MAXIMOS: constituição (dados fictícios) —');
   estado=estadoVazio();
   estado.empresa={razao_social:'SILVA & SOUZA COMÉRCIO LTDA',nome_fantasia:'CASA SILVA',endereco:'Rua Oito, nº 550',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-000',data_constituicao:'01/10/2026',objeto_social:'Comércio varejista de produtos alimentícios em geral'};
