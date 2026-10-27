@@ -1630,6 +1630,12 @@ function contextoMaximos(ctx,socios){
   ctx.dos_retirantes=artigoGrupo(retNotif.map(generoSocio),'do sócio','da sócia','dos sócios','das sócias');
   ctx.unicos_socios=artigoGrupo(socios.map(generoSocio),'único sócio','única sócia','únicos sócios','únicas sócias');
   ctx.Unicos_socios=maiuscula1(ctx.unicos_socios);
+  // abertura do contrato: lista só os sócios que JÁ existem (quem entra aparece na cláusula de inclusão, não na qualificação inicial)
+  const _abertura=socios.filter(s=>s.situacao!=='entra');
+  ctx.socios_abertura=_abertura;
+  ctx.unicos_socios_abertura=artigoGrupo(_abertura.map(generoSocio),'único sócio','única sócia','únicos sócios','únicas sócias');
+  ctx.resolve_abertura=_abertura.length>1?'resolvem':'resolve';
+  ctx.Unicos_socios_abertura=maiuscula1(ctx.unicos_socios_abertura);
   ctx.saida_arquivamento=alt.saida_arquivamento||'';ctx.saida_sessao=alt.saida_sessao||'';
   // empresa
   const e=estado.empresa||{};
@@ -2736,6 +2742,15 @@ function avisosExtras(est,lista){
   if(sug)out.push(['w','Este contrato tem '+sug.motivos.join(' e ')+', mas o modelo "'+sug.atual.nome+'" não escreve cláusula de quadro societário.'+(sug.modelo?' Use "'+sug.modelo.nome+'".':''),'gerar']);
   return out;
 }
+function faltaQuotasSocios(est){
+  const out=[];
+  const totQ=inteiro((est&&est.capital||{}).quotas);
+  if(totQ>0)(est&&est.socios||[]).forEach((s,i)=>{
+    if(s&&s.nome&&s.situacao!=='sai'&&!inteiro(s.quotas))
+      out.push(['e','Sócio '+(i+1)+' ('+s.nome+') está sem quotas (aba Quotas).','quotas']);
+  });
+  return out;
+}
 function validar(){
   // não lê o DOM: quem chama coleta antes (validar também roda em background, pelo status das etapas)
   if(ehLocacao())return validarLocacao();
@@ -2750,6 +2765,7 @@ function validar(){
   if(!estado.assinatura.data)probs.push(['w','Data de assinatura não informada.']);
   if(!estado.foro.comarca)probs.push(['w','Foro (comarca) não informado.']);
   avisosExtras(estado).forEach(x=>probs.push(x));
+  faltaQuotasSocios(estado).forEach(x=>probs.push(x));
   return probs;
 }
 function trocarParaModelo(id){
@@ -2893,12 +2909,12 @@ async function aplicarTimbreNaPrevia(){
   try{partes=await partesDoTimbrado();}catch(e){if(aviso)aviso.innerHTML=svg('alerta')+'Não consegui ler o papel timbrado: '+esc(e.message||e);return;}
   if(el('sel-papel')&&papelPadrao(el('sel-papel').value)!=='timbrado')return; // trocou de papel enquanto carregava
   const corpo=p.querySelector('.corpo-doc');if(!corpo)return;
-  const marca=document.createElement('div');marca.id='timbre-marca';marca.innerHTML='<img alt="" src="'+partes.marca+'">';
+  // marca d'água removida a pedido do escritório — a folha sai só com logo e rodapé
   const rodape='<div id="timbre-rodape">'+partes.rodape.map((l,i)=>i===0?'<b>'+esc(l)+'</b>':esc(l)).join('<br>')+'</div>';
   const tab=document.createElement('table');tab.id='folha-timbre';
   tab.innerHTML='<tfoot><tr><td>'+rodape+'</td></tr></tfoot><tbody><tr><td><div id="timbre-logo"><img alt="MAXIMOS" src="'+partes.logo+'"></div></td></tr></tbody>';
   tab.querySelector('tbody td').appendChild(corpo);
-  p.appendChild(marca);p.appendChild(tab);
+  p.appendChild(tab);
 }
 function trocarPapel(){
   const sel=el('sel-papel');if(!sel)return;
@@ -3010,7 +3026,9 @@ async function gerarDocx(texto,papel,titulo,tipoSaida){
     const xml=await zip.file('word/document.xml').async('string');
     if(xml.indexOf('{{CORPO}}')<0)throw new Error('Papel timbrado sem o marcador {{CORPO}}.');
     // margem superior de 0,5 cm serve p/ 1 página; contrato tem várias → 1,5 cm em todas as páginas
-    const novo=xml.replace('{{CORPO}}',corpo).replace(/(<w:pgMar[^>]*w:top=")\d+(")/,'$1851$2');
+    // remove a marca d'água (drawing atrás do texto, rId10) — mantém o logo (rId9)
+    const semMarca=xml.replace(/<w:drawing>(?:(?!<w:drawing>)[\s\S])*?rId10(?:(?!<w:drawing>)[\s\S])*?<\/w:drawing>/,'');
+    const novo=semMarca.replace('{{CORPO}}',corpo).replace(/(<w:pgMar[^>]*w:top=")\d+(")/,'$1851$2');
     zip.file('word/document.xml',novo);
   }else{
     zip=new JSZip();
@@ -3666,7 +3684,7 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 
 **CNPJ nº {{cnpj}}**
 
-{{#each socios}}{{qualificacao_completa}}{{#unless @ultimo}}{{#if @penultimo}} e {{/if}}{{#unless @penultimo}}, {{/unless}}{{/unless}}{{/each}}, {{unicos_socios}} da sociedade limitada denominada **{{razao_social}}**, com sede na {{sede_completa}}, inscrita no CNPJ {{cnpj}}, conforme contrato de constituição registrado na Junta Comercial do Estado de {{estado_extenso}}, sob o NIRE nº {{nire}}, {{resolve}} nesta data alterar o Contrato Social mediante as cláusulas e condições seguintes:
+{{#each socios_abertura}}{{qualificacao_completa}}{{#unless @ultimo}}{{#if @penultimo}} e {{/if}}{{#unless @penultimo}}, {{/unless}}{{/unless}}{{/each}}, {{unicos_socios_abertura}} da sociedade limitada denominada **{{razao_social}}**, com sede na {{sede_completa}}, inscrita no CNPJ {{cnpj}}, conforme contrato de constituição registrado na Junta Comercial do Estado de {{estado_extenso}}, sob o NIRE nº {{nire}}, {{resolve_abertura}} nesta data alterar o Contrato Social mediante as cláusulas e condições seguintes:
 
 {{#if saida_por_notificacao}}**Cláusula {{clausula_num}} -** Conforme arquivamento nº {{saida_arquivamento}} sessão {{saida_sessao}}, referente a notificação extrajudicial – ciência e providências sobre retirada de sócios, é promovida a retirada {{dos_retirantes}} {{retirantes_nomes}}.
 
@@ -3677,6 +3695,8 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 {{/each}}{{/if}}{{#if saida_por_cessao}}{{#each socios_retirantes_cessao}}**Cláusula {{clausula_num}} -** {{O_socio_ind}} **{{nome}}**, {{possuidor}} de {{quotas}} ({{quotas_extenso}}) quotas, no total de {{valor}} ({{valor_extenso}}), não pretendendo mais continuar na sociedade, cede e transfere suas {{quotas}} ({{quotas_extenso}}) quotas no total de {{valor}} ({{valor_extenso}}) para {{quotas_para_desc_para}}.
 
 **Cláusula {{clausula_num}} -** {{cedente}} **{{nome}}** declara que recebeu neste ato a importância de {{valor}} ({{valor_extenso}}) {{quotas_para_cessionario}}, dando tudo por quitado, nada mais tendo a reclamar.
+
+{{/each}}{{/if}}{{#if tem_ingressantes}}{{#each socios_ingressantes}}**Cláusula {{clausula_num}} -** Ingressa na sociedade, neste ato, {{qualificacao_completa}}, que passa a integrar o quadro societário, passando a deter {{quotas}} ({{quotas_extenso}}) quotas, no valor total de {{valor}} ({{valor_extenso}}).
 
 {{/each}}{{/if}}{{#if mudou_quadro_societario}}**Cláusula {{clausula_num}} -** O Capital Social de {{capital_valor}} ({{capital_valor_extenso}}) dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, fica assim subscrito e distribuído conforme o quadro constante da consolidação abaixo.
 
@@ -3745,9 +3765,9 @@ const MODELO_ALT_DADOS=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO CONTRATUAL
 
 **CNPJ nº {{cnpj}}**
 
-{{#each socios}}{{qualificacao_completa}}{{#unless @ultimo}}{{#if @penultimo}} e {{/if}}{{#unless @penultimo}}, {{/unless}}{{/unless}}{{/each}}.
+{{#each socios_abertura}}{{qualificacao_completa}}{{#unless @ultimo}}{{#if @penultimo}} e {{/if}}{{#unless @penultimo}}, {{/unless}}{{/unless}}{{/each}}.
 
-{{Unicos_socios}} da sociedade limitada denominada **{{razao_social}}**, com sede na {{sede_completa}}, inscrita no CNPJ sob nº {{cnpj}}, conforme o contrato de constituição registrado na Junta Comercial do Estado de {{estado_extenso}} sob o NIRE nº {{nire}}, {{resolve}} nesta data alterar o Contrato Social mediante as cláusulas e condições seguintes:
+{{Unicos_socios_abertura}} da sociedade limitada denominada **{{razao_social}}**, com sede na {{sede_completa}}, inscrita no CNPJ sob nº {{cnpj}}, conforme o contrato de constituição registrado na Junta Comercial do Estado de {{estado_extenso}} sob o NIRE nº {{nire}}, {{resolve_abertura}} nesta data alterar o Contrato Social mediante as cláusulas e condições seguintes:
 
 {{#if alterou_razao_social}}**Cláusula {{clausula_num}} -** A sociedade girará sob a denominação social de **{{rs_nova}}**.
 
@@ -4458,6 +4478,37 @@ function autoteste(){
   v('modelo de dados: nenhum marcador sobrando e nada de undefined',!/\{\{|\}\}|undefined/.test(txtAd));
   v('campo de vias vazio mantém as 3 vias do modelo de QSA',(()=>{estado.assinatura.vias='';const c=montarContexto();return /assina o presente instrumento em 3 \(três\) vias de igual teor e forma\./.test(renderTemplate(MODELO_ALT_CONSOLIDACAO,c));})());
 
+  v('entrada de sócio: abertura NÃO lista o ingressante; cláusula de inclusão e consolidação SIM',(()=>{
+    estado=estadoVazio();estado.operacao='socios';
+    estado.empresa={razao_social:'ALFA LTDA',cnpj:'11.222.333/0001-44',nire:'352',endereco:'Rua 1',cidade:'Rio Claro',estado:'SP',data_constituicao:'10/02/2019',objeto_social:'Comércio'};
+    estado.socios=[
+      {nome:'ANA TESTE',nacionalidade:'brasileira',estado_civil:'solteira',cpf:'111.111.111-11',endereco:'Rua A',cidade:'Rio Claro',estado:'SP',quotas:'6000'},
+      {nome:'BRUNO NOVO',nacionalidade:'brasileiro',estado_civil:'solteiro',cpf:'222.222.222-22',endereco:'Rua B',cidade:'Rio Claro',estado:'SP',situacao:'entra',quotas:'4000'}
+    ];
+    estado.capital={valor:'10.000,00',quotas:'10000'};estado.administracao={tipo:'socio_0'};
+    estado.alteracoes={saida_socio:true};estado.foro={comarca:'Rio Claro',uf:'SP'};estado.assinatura={cidade:'Rio Claro',data:'2026-10-26',uf:'SP'};
+    const c=montarContexto();const txt=renderTemplate(MODELO_ALT_CONSOLIDACAO,c);
+    const abertura=txt.split('alterar o Contrato Social')[0];
+    return c.socios_abertura.length===1&&c.socios_abertura[0].nome==='ANA TESTE'
+      &&!/BRUNO NOVO/.test(abertura)
+      &&/Ingressa na sociedade, neste ato, \*\*BRUNO NOVO\*\*/.test(txt)
+      &&txt.includes('| BRUNO NOVO |')
+      &&!/\{\{|\}\}|undefined/.test(txt);})());
+  v('sócio que entra sem quotas é barrado (erro), não sai calado',(()=>{
+    estado=estadoVazio();estado.operacao='socios';
+    estado.empresa={razao_social:'X LTDA',cnpj:'11.222.333/0001-44'};
+    estado.socios=[{nome:'ANA',cpf:'1',quotas:'10000'},{nome:'CARLA',cpf:'3',situacao:'entra'}];
+    estado.capital={valor:'10.000,00',quotas:'10000'};estado.alteracoes={saida_socio:true};
+    const e=validar();estado=estadoVazio();
+    return e.some(p=>p[0]==='e'&&/CARLA.*sem quotas/.test(p[1]));})());
+  v('rascunho sem capital não acusa quotas (não atrapalha)',faltaQuotasSocios({capital:{quotas:''},socios:[{nome:'A'}]}).length===0);
+  v('modelo de Dados: abertura também não lista o sócio que entra',(()=>{
+    estado=estadoVazio();estado.operacao='alteracao';
+    estado.empresa={razao_social:'X LTDA',cnpj:'11.222.333/0001-44',nire:'1'};
+    estado.socios=[{nome:'ANA',cpf:'1',estado_civil:'solteira',quotas:'10000'},{nome:'CARLA ENTRA',cpf:'3',estado_civil:'solteira',situacao:'entra',quotas:'0'}];
+    estado.capital={valor:'10.000,00',quotas:'10000'};estado.alteracoes={alterou_razao_social:true,rs_nova:'Y LTDA'};
+    const txt=renderTemplate(MODELO_ALT_DADOS,montarContexto());estado=estadoVazio();
+    return !txt.split('alterar o Contrato Social')[0].includes('CARLA ENTRA');})());
   linhas.push('— Padrão MAXIMOS: constituição (dados fictícios) —');
   estado=estadoVazio();
   estado.empresa={razao_social:'SILVA & SOUZA COMÉRCIO LTDA',nome_fantasia:'CASA SILVA',endereco:'Rua Oito, nº 550',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-000',data_constituicao:'01/10/2026',objeto_social:'Comércio varejista de produtos alimentícios em geral'};
@@ -4798,6 +4849,7 @@ async function autotesteDocx(ok,total,linhas){
       if(papel==='timbrado'){
         v('timbrado: logo e rodapé da MAXIMOS presentes',!!zip.file('word/media/image1.jpeg')&&!!zip.file('word/footer1.xml'));
         v('timbrado: margem superior 1,5 cm',/<w:pgMar[^>]*w:top="851"/.test(doc));
+        v('timbrado: Word sai SEM marca d\'água (rId10 fora) e COM logo (rId9)',!/rId10/.test(doc)&&/rId9/.test(doc));
         const pecas=await partesDoTimbrado();
         v('timbrado: logo e marca d\'água saem do .docx como imagem',/^data:image\/jpeg;base64,\/9j\//.test(pecas.logo)&&/^data:image\/png;base64,iVBOR/.test(pecas.marca));
         v('timbrado: rodapé do escritório lido do footer1.xml',pecas.rodape.length>=4&&/MAXIMOS SOLUÇÕES EMPRESARIAIS/.test(pecas.rodape[0])&&pecas.rodape.some(l=>/CNPJ/.test(l)));
@@ -5635,6 +5687,7 @@ function itensRevisao(){
     if(!s.endereco)falta.push('endereço');
     linhasS.push(falta.length?item('w',s.nome+': falta '+falta.join(', '),'socios'):item('ok',s.nome+' — dados completos'));
   });
+  faltaQuotasSocios(estado).forEach(x=>linhasS.push(item(x[0],x[1],x[2])));
   g.push(['Sócios',linhasS]);
   g.push(['Capital e quotas',[
     num(estado.capital.valor)?item('ok','Capital: '+moeda(num(estado.capital.valor))):item('e','Capital social não informado','quotas'),
