@@ -1626,6 +1626,14 @@ function contextoMaximos(ctx,socios){
     s.O_socio_ind=conc(generoSocio(s),'O sócio','A sócia');
     s.do_socio_ind=conc(generoSocio(s),'do sócio','da sócia');
   });
+  // origem das quotas de quem entra: se algum sócio que SAI cede para ele (quotas_para), é CESSÃO; senão, subscrição nova
+  ingressantes.forEach(s=>{
+    const cedentes=retirantes.filter(r=>String(r.quotas_para||'').trim().toUpperCase()===String(s.nome||'').trim().toUpperCase());
+    s.por_cessao=cedentes.length>0;
+    s.frase_ingresso=s.por_cessao
+      ? 'passando a deter '+s.quotas+' ('+s.quotas_extenso+') quotas, no valor total de '+s.valor+' ('+s.valor_extenso+'), que lhe foram cedidas e transferidas por sócio retirante, conforme cláusula acima.'
+      : 'subscrevendo '+s.quotas+' ('+s.quotas_extenso+') quotas novas, no valor total de '+s.valor+' ('+s.valor_extenso+'), integralizadas neste ato em moeda corrente nacional.';
+  });
   ctx.retirantes_nomes=retNotif.map(s=>'**'+s.nome+'**').join(', ').replace(/, ([^,]*)$/,' e $1');
   ctx.dos_retirantes=artigoGrupo(retNotif.map(generoSocio),'do sócio','da sócia','dos sócios','das sócias');
   ctx.unicos_socios=artigoGrupo(socios.map(generoSocio),'único sócio','única sócia','únicos sócios','únicas sócias');
@@ -3696,7 +3704,7 @@ const MODELO_ALT_CONSOLIDACAO=`**INSTRUMENTO DE ALTERAÇÃO E CONSOLIDAÇÃO DE 
 
 **Cláusula {{clausula_num}} -** {{cedente}} **{{nome}}** declara que recebeu neste ato a importância de {{valor}} ({{valor_extenso}}) {{quotas_para_cessionario}}, dando tudo por quitado, nada mais tendo a reclamar.
 
-{{/each}}{{/if}}{{#if tem_ingressantes}}{{#each socios_ingressantes}}**Cláusula {{clausula_num}} -** Ingressa na sociedade, neste ato, {{qualificacao_completa}}, que passa a integrar o quadro societário, passando a deter {{quotas}} ({{quotas_extenso}}) quotas, no valor total de {{valor}} ({{valor_extenso}}).
+{{/each}}{{/if}}{{#if tem_ingressantes}}{{#each socios_ingressantes}}**Cláusula {{clausula_num}} -** Ingressa na sociedade, neste ato, {{qualificacao_completa}}, que passa a integrar o quadro societário, {{frase_ingresso}}
 
 {{/each}}{{/if}}{{#if mudou_quadro_societario}}**Cláusula {{clausula_num}} -** O Capital Social de {{capital_valor}} ({{capital_valor_extenso}}) dividido em {{capital_quotas}} ({{capital_quotas_extenso}}) quotas de {{valor_quota}} ({{valor_quota_extenso}}) cada uma, totalmente subscrito e integralizado neste ato em moeda corrente nacional, fica assim subscrito e distribuído conforme o quadro constante da consolidação abaixo.
 
@@ -4509,6 +4517,20 @@ function autoteste(){
     estado.capital={valor:'10.000,00',quotas:'10000'};estado.alteracoes={alterou_razao_social:true,rs_nova:'Y LTDA'};
     const txt=renderTemplate(MODELO_ALT_DADOS,montarContexto());estado=estadoVazio();
     return !txt.split('alterar o Contrato Social')[0].includes('CARLA ENTRA');})());
+  v('ingresso por SUBSCRIÇÃO nova (sem cessão): fala em quotas novas integralizadas',(()=>{
+    estado=estadoVazio();estado.operacao='socios';
+    estado.empresa={razao_social:'X LTDA',cnpj:'11.222.333/0001-44',nire:'1'};
+    estado.socios=[{nome:'ANA',cpf:'1',estado_civil:'solteira',quotas:'6000'},{nome:'CARLA',cpf:'3',estado_civil:'solteira',situacao:'entra',quotas:'4000'}];
+    estado.capital={valor:'10.000,00',quotas:'10000'};estado.alteracoes={saida_socio:true};
+    const txt=renderTemplate(MODELO_ALT_CONSOLIDACAO,montarContexto());estado=estadoVazio();
+    return /Ingressa na sociedade[^]*?subscrevendo 4\.000 \(quatro mil\) quotas novas, no valor total de[^]*?integralizadas neste ato em moeda corrente nacional\./.test(txt);})());
+  v('ingresso por CESSÃO (sócio que sai cede ao que entra): fala em quotas cedidas',(()=>{
+    estado=estadoVazio();estado.operacao='socios';
+    estado.empresa={razao_social:'X LTDA',cnpj:'11.222.333/0001-44',nire:'1'};
+    estado.socios=[{nome:'ANA',cpf:'1',estado_civil:'solteira',quotas:'5000'},{nome:'BRUNO',cpf:'2',estado_civil:'solteiro',situacao:'sai',quotas:'5000',quotas_para:'CARLA'},{nome:'CARLA',cpf:'3',estado_civil:'solteira',situacao:'entra',quotas:'5000'}];
+    estado.capital={valor:'10.000,00',quotas:'10000'};estado.alteracoes={saida_socio:true};
+    const c=montarContexto();const txt=renderTemplate(MODELO_ALT_CONSOLIDACAO,c);estado=estadoVazio();
+    return c.socios_ingressantes[0].por_cessao===true && /Ingressa na sociedade[^]*?que lhe foram cedidas e transferidas por sócio retirante, conforme cláusula acima\./.test(txt);})());
   linhas.push('— Padrão MAXIMOS: constituição (dados fictícios) —');
   estado=estadoVazio();
   estado.empresa={razao_social:'SILVA & SOUZA COMÉRCIO LTDA',nome_fantasia:'CASA SILVA',endereco:'Rua Oito, nº 550',bairro:'Centro',cidade:'Rio Claro',estado:'SP',cep:'13500-000',data_constituicao:'01/10/2026',objeto_social:'Comércio varejista de produtos alimentícios em geral'};
